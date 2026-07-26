@@ -1,234 +1,146 @@
-// ================= HEADER =================
-const header = document.getElementById("header");
 
-window.addEventListener("scroll", () => {
-  header.classList.toggle("scrolled", window.scrollY > 20);
-});
-
-// ================= NAVIGATION =================
-const navLinks = document.querySelectorAll(".nav-link");
-const nav = document.getElementById("nav");
-const pill = document.getElementById("navPill");
-const activePill = document.getElementById("activePill");
-
-function currentFile() {
-  const path = window.location.pathname.split("/").pop();
-  return path || "home.html";
-}
-
-function setActiveLink() {
-  const current = currentFile();
-  let matched = false;
-
-  navLinks.forEach((link) => {
-    if (link.getAttribute("href") === current) {
-      link.classList.add("active");
-      matched = true;
-    } else {
-      link.classList.remove("active");
-    }
-  });
-
-  if (!matched) {
-    document
-      .querySelectorAll("[data-exact]")
-      .forEach((el) => el.classList.add("active"));
-  }
-}
-
-function positionActivePill(skipAnim = false) {
-  const activeLink = nav.querySelector(".nav-link.active");
-
-  if (!activeLink) {
-    activePill.classList.remove("show");
-    return;
-  }
-
-  if (skipAnim) {
-    activePill.classList.add("no-anim");
-  }
-
-  const navRect = nav.getBoundingClientRect();
-  const linkRect = activeLink.getBoundingClientRect();
-
-  activePill.style.width = `${linkRect.width}px`;
-  activePill.style.transform = `translateX(${linkRect.left - navRect.left}px)`;
-
-  activePill.classList.add("show");
-
-  if (skipAnim) {
-    void activePill.offsetWidth;
-    activePill.classList.remove("no-anim");
-  }
-}
-
-navLinks.forEach((link) => {
-  link.addEventListener("click", function () {
-    navLinks.forEach((item) => item.classList.remove("active"));
-
-    this.classList.add("active");
-
-    if (this.closest("#nav")) {
-      positionActivePill();
-    }
-  });
-});
-
-// ================= HOVER PILL =================
-const links = nav.querySelectorAll(".nav-link");
-
-function movePillTo(el) {
-  const navRect = nav.getBoundingClientRect();
-  const rect = el.getBoundingClientRect();
-
-  pill.style.width = `${rect.width}px`;
-  pill.style.transform = `translateX(${rect.left - navRect.left}px)`;
-}
-
-links.forEach((link) => {
-  link.addEventListener("mouseenter", () => {
-    nav.classList.add("has-hover");
-    movePillTo(link);
-  });
-});
-
-nav.addEventListener("mouseleave", () => {
-  nav.classList.remove("has-hover");
-});
-
-window.addEventListener("resize", () => {
-  positionActivePill(true);
-});
-
-setActiveLink();
-
-requestAnimationFrame(() => {
-  positionActivePill(true);
-});
-
-// ================= MOBILE MENU =================
-const burger = document.getElementById("burger");
-const mobileNav = document.getElementById("mobileNav");
-const burgerIcon = document.getElementById("burgerIcon");
-
-let open = false;
-
-burger.addEventListener("click", () => {
-  open = !open;
-
-  mobileNav.classList.toggle("open", open);
-
-  burgerIcon.innerHTML = open
-    ? `
-      <line x1="6" y1="6" x2="18" y2="18"/>
-      <line x1="6" y1="18" x2="18" y2="6"/>
-    `
-    : `
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    `;
-});
-
-// ================= HERO SLIDER =================
-const dotsWrap = document.getElementById("dotsWrap");
-const centerCard = document.querySelector(".center-card");
-
-const slides = [
-  {
-    icon: "bi-diagram-3",
-    title: "Data Structure",
-    subtitle: "& Algorithm",
-    color: "#0d9488"
-  },
-  {
-    icon: "bi-database",
-    title: "Database",
-    subtitle: "Management",
-    color: "#2e7dff"
-  },
-  {
-    icon: "bi-cup-hot",
-    title: "Java",
-    subtitle: "Programming",
-    color: "#ef4444"
-  },
-  {
-    icon: "bi-bar-chart",
-    title: "Probability",
-    subtitle: "& Statistics",
-    color: "#8b5cf6"
-  },
-  {
-    icon: "bi-code-slash",
-    title: "Web",
-    subtitle: "Development",
-    color: "#22c55e"
-  },
-  {
-    icon: "bi-cpu",
-    title: "Computer",
-    subtitle: "Architecture",
-    color: "#f59e0b"
-  }
+// ---------- Carousel data ----------
+const courses = [
+  { title:"Data Structure & Algorithm", icon:"bi-diagram-3", color:"#8B5CF6" },
+  { title:"Python", icon:"bi-filetype-py", color:"#63B3ED" },
+  { title:"Java", icon:"bi-cup-hot", color:"#E9A23B" },
+  { title:"HTML & CSS", icon:"bi-code-slash", color:"#F0653D" },
+  { title:"Database", icon:"bi-hdd-stack", color:"#374151" }
 ];
 
-let activeDot = 0;
+const track = document.getElementById('track');
+const indicatorsWrap = document.getElementById('indicators');
+let current = 0;
 
-function renderDots() {
-  dotsWrap.innerHTML = "";
+courses.forEach((c, i) => {
+  const card = document.createElement('div');
+  card.className = 'course-card';
+  card.innerHTML = `
+    <div class="icon-wrap" style="background:${c.color}"><i class="bi ${c.icon}"></i></div>
+    <div class="title">${c.title}</div>
+  `;
+  track.appendChild(card);
 
-  slides.forEach((_, index) => {
-    const dot = document.createElement("span");
+  const dot = document.createElement('button');
+  dot.className = 'dot';
+  dot.setAttribute('aria-label', 'Go to slide ' + (i+1));
+  dot.addEventListener('click', () => { current = i; render(); resetAuto(); });
+  indicatorsWrap.appendChild(dot);
+});
 
-    dot.className = `dot ${
-      index === activeDot ? "active" : ""
-    }`;
+const cardEls = () => track.querySelectorAll('.course-card');
+const dotEls = () => indicatorsWrap.querySelectorAll('.dot');
 
-    dot.addEventListener("click", () => {
-      activeDot = index;
-      updateSlide();
-    });
+function posClass(offset){
+  const n = courses.length;
+  const o = ((offset % n) + n) % n;
+  if(o === 0) return 'pos-center';
+  if(o === 1) return 'pos-right1';
+  if(o === 2) return 'pos-right2';
+  if(o === n-1) return 'pos-left1';
+  if(o === n-2) return 'pos-left2';
+  return 'pos-hide';
+}
 
-    dotsWrap.appendChild(dot);
+function render(){
+  cardEls().forEach((card, i) => {
+    card.className = 'course-card ' + posClass(i - current);
   });
+  dotEls().forEach((d, i) => d.classList.toggle('active', i === current));
 }
 
-function updateSlide() {
+function next(){ current = (current + 1) % courses.length; render(); }
+function prev(){ current = (current - 1 + courses.length) % courses.length; render(); }
 
-  centerCard.classList.remove("slide-animation");
+document.getElementById('nextBtn').addEventListener('click', () => { next(); resetAuto(); });
+document.getElementById('prevBtn').addEventListener('click', () => { prev(); resetAuto(); });
 
-  setTimeout(() => {
-
-    centerCard.innerHTML = `
-      <i class="bi ${slides[activeDot].icon} node-icon"></i>
-      <h5>${slides[activeDot].title}</h5>
-      <span>${slides[activeDot].subtitle}</span>
-    `;
-
-    centerCard.style.color = slides[activeDot].color;
-
-    centerCard.classList.add("slide-animation");
-
-    renderDots();
-
-  }, 150);
+let autoTimer = setInterval(next, 4000);
+function resetAuto(){
+  clearInterval(autoTimer);
+  autoTimer = setInterval(next, 4000);
 }
 
-document.getElementById("nextBtn").addEventListener("click", () => {
-  activeDot = (activeDot + 1) % slides.length;
-  updateSlide();
+render();
+
+// ---------- Fade in on scroll ----------
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ---------- Header scroll effect ----------
+const header = document.getElementById('header');
+
+function handleHeaderScroll() {
+  if (window.scrollY > 40) {
+    header.classList.add('scrolled');
+  } else {
+    header.classList.remove('scrolled');
+  }
+}
+
+window.addEventListener('scroll', handleHeaderScroll);
+handleHeaderScroll(); // run once immediately, in case the page loads already scrolled down
+
+// ---------- Nav pill: hover + active ----------
+const nav = document.getElementById('nav');
+const navPill = document.getElementById('navPill');
+const activePill = document.getElementById('activePill');
+const navLinks = nav.querySelectorAll('a.nav-link');
+
+// Move a pill element to sit exactly behind a given link
+function movePillTo(pill, link) {
+  pill.style.width = link.offsetWidth + 'px';
+  pill.style.transform = `translateX(${link.offsetLeft}px)`;
+}
+
+// ---------- Hover pill: follows whichever link you're pointing at ----------
+navLinks.forEach(link => {
+  link.addEventListener('mouseenter', () => {
+    movePillTo(navPill, link);
+    nav.classList.add('has-hover');
+  });
 });
 
-document.getElementById("prevBtn").addEventListener("click", () => {
-  activeDot = (activeDot - 1 + slides.length) % slides.length;
-  updateSlide();
+nav.addEventListener('mouseleave', () => {
+  nav.classList.remove('has-hover');
 });
 
-setInterval(() => {
-  activeDot = (activeDot + 1) % slides.length;
-  updateSlide();
-}, 4000);
+// ---------- Active pill: locks onto the current page, persists on click ----------
+function setActivePill(animate = true) {
+  const currentPath = window.location.pathname.split('/').pop();
 
-renderDots();
-updateSlide();
+  let activeLink = null;
+  navLinks.forEach(link => {
+    const linkPath = link.getAttribute('href').split('/').pop();
+    if (linkPath === currentPath) {
+      link.classList.add('active');
+      activeLink = link;
+    } else {
+      link.classList.remove('active');
+    }
+  });
+
+  if (activeLink) {
+    if (!animate) activePill.classList.add('no-anim');
+    movePillTo(activePill, activeLink);
+    activePill.classList.add('show');
+    // re-enable animation after the instant snap, so future moves are smooth
+    requestAnimationFrame(() => activePill.classList.remove('no-anim'));
+  } else {
+    activePill.classList.remove('show');
+  }
+}
+
+// Run on load (no animation — snap straight to position)
+setActivePill(false);
+
+// Re-run on resize, since link widths/positions shift
+window.addEventListener('resize', () => setActivePill(false));

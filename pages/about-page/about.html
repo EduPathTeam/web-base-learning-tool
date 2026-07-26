@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>About Our Learning Platform</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style2.css">
+<style>
+
+</style>
+</head>
+<body>
+    <header class="header" id="header">
+    <div class="header-inner">
+    <a href="../home-page/index.html" class="logo">Edu<span class="logo-span">Path</span></a>
+
+    <nav class="nav" id="nav">
+    <span class="active-pill" id="activePill"></span>
+    <span class="nav-pill" id="navPill"></span>
+
+    <a href="../home-page/index.html" class="nav-link" >Home</a>
+    <a href="../learn-page/learn.html" class="nav-link">Learn</a>
+    <a href="../quiz-page/quiz.html" class="nav-link">Quiz</a>
+    <a href="../dashboard-page/dashboard.html" class="nav-link">Dashboard</a>
+    <a href="../about-page/about.html" class="nav-link" data-exact>About</a>
+    <a class= " login-icon"><i class="bi bi-box-arrow-in-right"></i> 
+      Sign In
+    </a>
+    </nav>
+
+    <button class="burger" id="burger" aria-label="Menu">
+      <svg id="burgerIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <nav class="mobile-nav" id="mobileNav">
+      <div class="mobile-nav-inner">
+        <a href="../home-page/index.html" class="nav-link" >Home</a>
+        <a href="../learn-page/learn.html" class="nav-link">Learn</a>
+        <a href="../quiz-page/quiz.html" class="nav-link">Quiz</a>
+        <a href="../dashboard-page/dashboard.html" class="nav-link">Dashboard</a>
+        <a href="../about-page/about.html" class="nav-link" data-exact>About</a>
+        <a class= " login-icon"><i class="bi bi-box-arrow-in-right"></i> 
+        Sign In
+        </a></div>
+    </nav>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero-section d-flex align-items-center justify-content-center text-center">
+  <div class="container">
+    <div class="d-flex flex-column align-items-center justify-content-center gap-3 gap-md-4">
+      <div class="reveal">
+        <h1>About Our Learning Platform</h1>
+        <p>Our Platform is designed to help students understand
+          <span class="text-highlight">Data Structure and Algorithm</span>
+          in a simple and interactive way.</p>
+        <a href="#" class="btn btn-primary-custom mt-2">Start learning</a>
+      </div>
+        
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUR STORY ============ -->
+<section class="story-section section-pad">
+  <div class="container">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-6 reveal">
+        <h2 class="mb-4">Our Story</h2>
+        <p>DSA PathFinder was born from a simple observation: too many talented students struggle with Data Structures &amp; Algorithms because traditional learning methods are dry, confusing, and disconnected from real-world applications.</p>
+        <p>We created a platform that combines interactive visualizations, hands-on coding challenges, and personalized career guidance to make DSA learning engaging and purposeful. Our goal is to help students not just learn algorithms, but understand why they matter and how they connect to exciting tech careers.</p>
+        <p>Today, DSA PathFinder serves thousands of high school students worldwide, helping them build strong foundations in computer science while discovering careers in IT, Information Technology Engineering, and Data Science.</p>
+      </div>
+      <div class="col-lg-6 reveal delay-2">
+        <img class="gradient" style="border-radius: 10px;" src="../../images/istockphoto-487018282-612x612.jpg" alt="Our Story" class="img-fluid rounded" width="460px">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUR MISSION ============ -->
+<section class="section-pad pt-0">
+  <div class="container">
+    <div class="mission-card reveal">
+      <div class="row align-items-center gy-4">
+        <div class="col-lg-7">
+          <h2 class="mb-3">Our Mission</h2>
+          <p>Our mission is to make <span class="text-highlight-blue">Data Structure and Algorithm</span> easy to understand for every student.</p>
+          <p class="mb-0">We provide visual explanation, Coding examples, and interactive exercise to improve problem-solving skills.</p>
+        </div>
+        <div class="col-lg-5">
+          <div class="mission-illustration">
+            <img class="missionImage" src="../../images/mission-word-on-wood-table-for-business-concept-free-photo.jpg" alt="" width="490px" height="280px">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHAT YOU CAN LEARN (4 CARDS) ============ -->
+<section class="section-pad pt-0">
+  <div class="container">
+    <h2 class="mb-4 reveal">What You Can learn</h2>
+    <div class="row gy-4">
+      <div class="col-lg-3 col-sm-6 reveal">
+        <div class="learn-card">
+          <div class="icon-badge badge-peach"><i class="bi bi-archive-fill"></i></div>
+          <h5>Data Structure</h5>
+          <ul>
+            <li>Array</li>
+            <li>Linked List</li>
+            <li>Queue</li>
+            <li>Tree</li>
+            <li>Stack</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6 reveal delay-1">
+        <div class="learn-card">
+          <div class="icon-badge badge-blue"><i class="bi bi-diagram-3-fill"></i></div>
+          <h5>Algorithm</h5>
+          <ul>
+            <li>Sorting Algorithms</li>
+            <li>Searching Algorithms</li>
+            <li>Dynamic Programming</li>
+            <li>Greedy Algorithms</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6 reveal delay-2">
+        <div class="learn-card">
+          <div class="icon-badge badge-mint"><i class="bi bi-code-slash"></i></div>
+          <h5>Coding Practice</h5>
+          <ul>
+            <li>Solving Problems</li>
+            <li>Write your own code</li>
+            <li>Test your solution</li>
+          </ul>
+          <a class="btn btn-primary-custom" href="../testCode-Page/test.html">Test Code</a>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6 reveal delay-3">
+        <div class="learn-card">
+          <div class="icon-badge badge-lav"><i class="bi bi-magic"></i></div>
+          <h5>Interactive learning</h5>
+          <ul>
+            <li>Visual animations</li>
+            <li>Step-by-step Explanations</li>
+            <li>Quizzes and challenges</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STEPS + TEAM + CELEBRATION ============ -->
+<section class="section-pad pt-0">
+  <div class="container">
+    <div class="row gy-4">
+      <div class="col-lg-6 reveal">
+        <div class="steps-card">
+          <h4 class="mb-4">What You Can learn</h4>
+          <div class="step-row">
+            <div><h5>Structured Lessons</h5><span>Easy step-by-step learning</span></div>
+            <a href="#" class="btn btn-primary-custom">Continues -></a>
+          </div>
+          <div class="step-row">
+            <div><h5>Practice Problems</h5><span>Improve coding Skills</span></div>
+            <a href="#" class="btn btn-primary-custom">Continues -></a>
+          </div>
+          <div class="step-row">
+            <div><h5>Progress Tracking</h5><span>Track your learning</span></div>
+            <a href="#" class="btn btn-primary-custom">Continues -></a>
+          </div>
+          <div class="step-row">
+            <div><h5>Algorithm Lesson</h5><span>Easy step-by-step learning algorithm</span></div>
+            <a href="#" class="btn btn-primary-custom">Continues -></a>
+          </div>
+          <div class="step-row">
+            <div><h5>Visual animations</h5><span>Real Visual animations on algorithm</span></div>
+            <a href="#" class="btn btn-primary-custom">Continues -></a>
+          </div>
+          <div class="step-row">
+            <div><h5>Quizzes and challenges</h5><span>Complete Quiz</span></div>
+            <a href="#" class="btn btn-primary-custom">Continues -></a>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6 reveal delay-2">
+        <div class="team-card">
+          <h4 class="mb-4">Meet Our Team</h4>
+          <div class="row gy-3">
+            <div class="col-4 team-member">
+              <div class="avatar-circle">MH</div>
+              <h6>Chey Menghout</h6>
+              <div class="role">Founder &amp; Lead Developer</div>
+              <div class="desc">Computer Science graduate passionate about making DSA interesting</div>
+            </div>
+            <div class="col-4 team-member">
+              <div class="avatar-circle">SJ</div>
+              <h6>Chhantha Sreyneang</h6>
+              <div class="role">Founder &amp; Lead Developer</div>
+              <div class="desc">Expert in algorithm designing engaging and educational content</div>
+            </div>
+            <div class="col-4 team-member">
+              <div class="avatar-circle">ML</div>
+              <h6>Chang Minhlaing</h6>
+              <div class="role">UX Designer</div>
+              <div class="desc">Designing intuitive experience for high school students</div>
+            </div>
+          </div>
+        </div>
+        <div class="celeb-card">
+          <h4 class="mb-3" style="color:#e63946;">Celebration</h4>
+          <div class="rank-row">
+            <div class="rank-badge rank-1">1</div>
+            <span class="name">Chhantha Sreyneang</span>
+            <i class="bi bi-trophy-fill"></i>
+          </div>
+          <div class="rank-row">
+            <div class="rank-badge rank-2">2</div>
+            <span class="name">Chang Minhlaing</span>
+          </div>
+          <div class="rank-row">
+            <div class="rank-badge rank-3">3</div>
+            <span class="name">Chey Menghout</span>
+            <i class="bi bi-award-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHAT WE STAND FOR ============ -->
+<section class="stand-for-section section-pad">
+  <div class="container text-center">
+    <h2 class="reveal">What We Stand For</h2>
+    <p class="reveal">Our guiding principles that drive everything we do</p>
+    <div class="row gy-4 mt-2">
+      <div class="col-lg-4 reveal">
+        <div class="value-card">
+          <div class="value-icon badge-blue"><i class="bi bi-bullseye"></i></div>
+          <h5>Our Mission</h5>
+          <p class="mb-0">To make Data Structures &amp; Algorithms education accessible and engaging for high school students worldwide, while helping them discover their ideal tech career path.</p>
+        </div>
+      </div>
+      <div class="col-lg-4 reveal delay-1">
+        <div class="value-card">
+          <div class="value-icon badge-lav"><i class="bi bi-eye-fill"></i></div>
+          <h5>Our Vision</h5>
+          <p class="mb-0">A world where every student has the knowledge and confidence to pursue their dream career in technology, equipped with solid DSA foundations.</p>
+        </div>
+      </div>
+      <div class="col-lg-4 reveal delay-2">
+        <div class="value-card">
+          <div class="value-icon badge-mint"><i class="bi bi-check-circle-fill"></i></div>
+          <h5>Our Values</h5>
+          <p class="mb-0">Student-first approach, interactive learning, personalized guidance, and making complex concepts simple and fun to learn.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUR IMPACT ============ -->
+<section class="section-pad">
+  <div class="container text-center">
+    <h2 class="reveal">Our Impact</h2>
+    <p class="reveal">Real numbers that showcase our commitment to student success</p>
+    <div class="row gy-4 mt-2">
+      <div class="col-lg-3 col-sm-6 reveal">
+        <div class="impact-card">
+          <i class="bi bi-people-fill"></i>
+          <div class="impact-number" data-target="10000" data-suffix="+">0+</div>
+          <div class="impact-label">Active Students</div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6 reveal delay-1">
+        <div class="impact-card">
+          <i class="bi bi-collection-fill"></i>
+          <div class="impact-number" data-target="60" data-suffix="+">0+</div>
+          <div class="impact-label">Lessons Created</div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6 reveal delay-2">
+        <div class="impact-card">
+          <i class="bi bi-graph-up-arrow"></i>
+          <div class="impact-number" data-target="95" data-suffix="%">0%</div>
+          <div class="impact-label">Avg Success Rate</div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-sm-6 reveal delay-3">
+        <div class="impact-card">
+          <i class="bi bi-briefcase-fill"></i>
+          <div class="impact-number" data-target="500" data-suffix="+">0+</div>
+          <div class="impact-label">Career Matches</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUR JOURNEY ============ -->
+<section class="journey-section section-pad">
+  <div class="container">
+    <h2 class="text-center reveal">Our Journey</h2>
+    <p class="text-center reveal">Key milestones in our mission to transform DSA education</p>
+    <div class="timeline mt-5">
+      <div class="timeline-item reveal">
+        <div class="timeline-year">Year 1</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-card">
+          <h5>DSA PathFinder Launched</h5>
+          <span>Platform goes live with 20 lessons</span>
+        </div>
+      </div>
+      <div class="timeline-item reveal delay-1">
+        <div class="timeline-year">Year 2</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-card">
+          <h5>10,000 Students</h5>
+          <span>Reached milestone of 10K active learners</span>
+        </div>
+      </div>
+      <div class="timeline-item reveal delay-2">
+        <div class="timeline-year">Year 3</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-card">
+          <h5>Career Quiz Launch</h5>
+          <span>Introduced AI-powered major recommendations</span>
+        </div>
+      </div>
+      <div class="timeline-item reveal delay-3">
+        <div class="timeline-year">Year4</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-card">
+          <h5>60+ Lessons</h5>
+          <span>Expanded to comprehensive DSA curriculum</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-section reveal">
+  <div class="container">
+    <h2>Join Our Learning Community</h2>
+    <p>Start your journey to mastering Data Structures &amp; Algorithms and discovering your perfect tech career path today.</p>
+    <div class="cta-buttons" >
+        <a href="#" style="text-decoration: none;" class="a1 btn-dark-custom">Start learning</a>
+        <a href="#" style="text-decoration: none;" class="a1 btn-outline-light-custom">Take career Quiz</a>
+    </div>
+  </div>
+</section>
+
+<a href="../testCode-Page/test.html"class="feedback-fab">? </a>
+
+<!--Footer-->
+<footer>
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-6 col-lg-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <img src="../../images/icon.png" alt="Company Logo" width="50" height="50" style="border-radius: 10px;">
+          <strong class="text-white">EduPath</strong>
+        </div>
+        <p style="font-size:.8rem; color:#9aa0bd;">Empowering high school students to master Data Structures &amp; Algorithms and discover their tech path with interactive learning, roadmaps, and personalized quizzes.</p>
+        <p style="font-size:.78rem;margin-bottom:.2rem; color:#f5f6f9;"><i class="bi bi-envelope-fill me-2"></i>email@gmail.com</p>
+        <p style="font-size:.78rem; color:#f5f6f9;"><i class="bi bi-telephone-fill me-2"></i>+855 123456789</p>
+      </div>
+      <div class="col-6 col-lg-3">
+        <h6>Platform</h6>
+        <ul>
+          <li><a href="#"></i>Home</a></li>
+          <li><a href="#"></i>Learn DSA</a></li>
+          <li><a href="#"></i>Take quiz</a></li>
+          <li><a href="#"></i>Dashboard</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-lg-3">
+        <h6>Resources</h6>
+        <ul>
+          <li><a href="#">Major information</a></li>
+          <li><a href="#">Career paths</a></li>
+          <li><a href="#">Learning materials</a></li>
+          <li><a href="#">Practice problem</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-lg-3">
+        <h6>Support</h6>
+        <ul>
+          <li><a href="#">FeedBack</a></li>
+          <li><a href="#">Help Centers</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Community</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+      <div class="footer-social">
+        <a href="#"><i class="bi bi-facebook"></i></a>
+        <a href="#"><i class="bi bi-instagram"></i></a>
+        <a href="#"><i class="bi bi-tiktok"></i></a>
+        <a href="#"><i class="bi bi-github"></i></a>
+        <a href="#"><i class="bi bi-google"></i></a>
+      </div>
+      <span>Royal University of Phnom Penh &middot; © 2026 Learning Tool. All rights reserved.</span>
+    </div>
+  </div>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="./script2.js"></script>
+
+</script>
+</body>
+</html>
