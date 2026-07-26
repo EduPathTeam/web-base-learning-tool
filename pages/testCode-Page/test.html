@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback | DSA PathFinder</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="test.css">
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<section class="hero-section section-pad">
+  <div class="container text-center">
+    <div class="reveal">
+      <h1>We'd Love to Hear From You</h1>
+      <p>Your feedback helps us make <span class="text-highlight">Data Structure and Algorithm</span> learning even easier for every student.</p>
+    </div>
+    <div class="hero-illustration reveal delay-2">
+      <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg">
+        <g class="float-slow">
+          <rect x="130" y="40" width="140" height="90" rx="20" fill="#ffffff" stroke="#e3e8f5" stroke-width="2"/>
+          <path d="M160 130 l16 26 16-26 z" fill="#ffffff" stroke="#e3e8f5" stroke-width="2"/>
+          <circle cx="170" cy="82" r="6" fill="#2f5fe0"/>
+          <circle cx="200" cy="82" r="6" fill="#8a4fe8"/>
+          <circle cx="230" cy="82" r="6" fill="#17c99e"/>
+        </g>
+        <g class="float-slow-rev">
+          <path d="M60 60 l6 14 14 6 -14 6 -6 14 -6-14 -14-6 14-6 z" fill="#e6c94a"/>
+        </g>
+        <g class="float-slow">
+          <path d="M330 150 l5 11 11 5 -11 5 -5 11 -5-11 -11-5 11-5 z" fill="#8a4fe8"/>
+        </g>
+        <g class="float-slow-rev">
+          <path d="M340 50 l4 9 9 4 -9 4 -4 9 -4-9 -9-4 9-4 z" fill="#2f5fe0"/>
+        </g>
+        <g class="float-slow">
+          <path d="M50 160 l4 9 9 4 -9 4 -4 9 -4-9 -9-4 9-4 z" fill="#17c99e"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEEDBACK FORM ============ -->
+<section class="section-pad">
+  <div class="container">
+    <div class="reveal">
+      <div class="feedback-card" id="feedbackFormWrap">
+        <form id="feedbackForm">
+          <h3 class="mb-4 text-center">Share Your Feedback</h3>
+          <div class="row gy-3">
+            <div class="col-md-6">
+              <label class="form-label-custom">Your Name</label>
+              <input type="text" class="form-control-custom" id="fbName" placeholder="e.g. Sokha Chan" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-custom">Email Address</label>
+              <input type="email" class="form-control-custom" id="fbEmail" placeholder="you@example.com" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label-custom">Feedback Category</label>
+              <select class="form-select-custom" id="fbCategory">
+                <option>General Feedback</option>
+                <option>Bug Report</option>
+                <option>Feature Request</option>
+                <option>Lesson / Content Issue</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label-custom">How would you rate your experience?</label>
+              <div class="star-rating" id="starRating">
+                <i class="bi bi-star" data-value="1"></i>
+                <i class="bi bi-star" data-value="2"></i>
+                <i class="bi bi-star" data-value="3"></i>
+                <i class="bi bi-star" data-value="4"></i>
+                <i class="bi bi-star" data-value="5"></i>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label-custom">Your Message</label>
+              <textarea class="form-control-custom" id="fbMessage" placeholder="Tell us what you loved, or what we can improve..." required></textarea>
+            </div>
+            <div class="col-12 text-center mt-3">
+              <button type="submit" class="btn-primary-custom" id="fbSubmitBtn">Send Feedback</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="feedback-card d-none" id="successMsg">
+        <div class="success-wrap">
+          <div class="success-check"><i class="bi bi-check-lg"></i></div>
+          <h3>Thank You!</h3>
+          <p class="mb-0">Your feedback has been received. We really appreciate you helping us improve DSA PathFinder.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHY FEEDBACK MATTERS ============ -->
+<section class="why-section section-pad">
+  <div class="container text-center">
+    <h2 class="reveal">Why Your Feedback Matters</h2>
+    <p class="reveal">Every message shapes how we build DSA PathFinder</p>
+    <div class="row gy-4 mt-2">
+      <div class="col-lg-4 reveal">
+        <div class="why-card">
+          <div class="why-icon badge-blue"><i class="bi bi-lightbulb-fill"></i></div>
+          <h5>Shape the Platform</h5>
+          <p class="mb-0">Your ideas directly influence new lessons, features, and tools we build next.</p>
+        </div>
+      </div>
+      <div class="col-lg-4 reveal delay-1">
+        <div class="why-card">
+          <div class="why-icon badge-lav"><i class="bi bi-tools"></i></div>
+          <h5>Faster Fixes</h5>
+          <p class="mb-0">Bug reports help our team catch and resolve issues quickly for every student.</p>
+        </div>
+      </div>
+      <div class="col-lg-4 reveal delay-2">
+        <div class="why-card">
+          <div class="why-icon badge-mint"><i class="bi bi-mortarboard-fill"></i></div>
+          <h5>Better Content</h5>
+          <p class="mb-0">Lesson feedback helps us make explanations clearer and more useful for learning.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section class="section-pad">
+  <div class="container">
+    <h2 class="text-center reveal">What Other Learners Say</h2>
+    <p class="text-center reveal">Feedback from students already using DSA PathFinder</p>
+    <div class="row gy-4 mt-2">
+      <div class="col-lg-4 reveal">
+        <div class="testimonial-card">
+          <div class="stars"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
+          <p>"The visual explanations finally made linked lists click for me. Reporting a small bug got fixed within a week!"</p>
+          <div class="d-flex align-items-center gap-2 mt-3">
+            <div class="t-avatar">DP</div>
+            <div><p class="t-name">Dara Pich</p><span class="t-role">Grade 11 Student</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 reveal delay-1">
+        <div class="testimonial-card">
+          <div class="stars"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star"></i></div>
+          <p>"I suggested more practice problems on recursion and they actually added a whole new set. Feels like they listen!"</p>
+          <div class="d-flex align-items-center gap-2 mt-3">
+            <div class="t-avatar">ML</div>
+            <div><p class="t-name">Maly Leng</p><span class="t-role">Grade 12 Student</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 reveal delay-2">
+        <div class="testimonial-card">
+          <div class="stars"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
+          <p>"Sending feedback took less than a minute and I got a thoughtful reply from the team. Great experience overall."</p>
+          <div class="d-flex align-items-center gap-2 mt-3">
+            <div class="t-avatar">RS</div>
+            <div><p class="t-name">Ratanak Sok</p><span class="t-role">Grade 10 Student</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<a href="../home-page/index.html"class="prevent"> <- </a>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="test.js"></script>
+</body>
+</html>
