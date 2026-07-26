@@ -303,7 +303,6 @@
     .hero-badge{ font-size:.68rem; padding:5px 12px; }
   }
 
-<<<<<<< HEAD
   .header {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -377,8 +376,7 @@
     color: white !important;
     font-weight: 600;
     transition: all 0.3s ease;
-=======
-  
+  }
  /* ---------- HEADER / NAVBAR ---------- */
 .header {
   position: fixed;
@@ -391,7 +389,6 @@
   transform: translateY(-30px);
   opacity: 0;
   animation: headerIn 0.8s cubic-bezier(0.2,0.8,0.2,1) 0.4s forwards;
->>>>>>> 47a2a25 (Update Home Page)
 }
 @keyframes headerIn {
   to { transform: translateY(0); opacity: 1; }
