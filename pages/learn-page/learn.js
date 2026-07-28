@@ -118,3 +118,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+
+button.addEventListener('click', () => {
+  const parentCard = button.closest('.lesson-card');
+  const siblingButtons = parentCard.querySelectorAll('.lesson-btn');
+
+  siblingButtons.forEach((sibling) => sibling.classList.remove('is-selected'));
+  button.classList.add('is-selected');
+
+  const lessonName = button.getAttribute('data-lesson');
+  console.log(`Lesson selected: ${lessonName}`);
+});
+
+button.addEventListener('click', () => {
+  const parentCard = button.closest('.lesson-card');
+  const siblingButtons = parentCard.querySelectorAll('.lesson-btn');
+
+  siblingButtons.forEach((sibling) => sibling.classList.remove('is-selected'));
+  button.classList.add('is-selected');
+
+  const lessonName = button.getAttribute('data-lesson');
+  console.log(`Lesson selected: ${lessonName}`);
+
+  // Navigate to the lesson's page, if one is set
+  const href = button.getAttribute('data-href');
+  if (href) {
+    window.location.href = href;
+  }
+});
