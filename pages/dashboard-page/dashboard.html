@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>EduPath</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../dashboard-page/dashboard.css">
+<link rel="stylesheet" href="../learn-page/learn.css">
+</head>
+<body data-nav-section="learn">
+
+  <!-- ===================== HEADER / NAV ===================== -->
+  <header class="header" id="header">
+    <div class="header-inner">
+      <a href="../home-page/index.html" class="logo">Edu<span class="logo-span">Path</span></a>
+
+    <nav class="nav" id="nav">
+        <span class="active-pill" id="activePill"></span>
+        <span class="nav-pill" id="navPill"></span>
+        <a href="../home-page/index.html" class="nav-link" data-exact>Home</a>
+        <a href="../learn-page/learn.html" class="nav-link" data-section="learn">Learn</a>
+        <a href="../quiz-page/quiz.html" class="nav-link">Quiz</a>
+        <a href="../dashboard-page/dashboard.html" class="nav-link">Dashboard</a>
+        <a href="../about-page/about.html" class="nav-link">About</a>
+        <a href="../sign-in/sign-in.html"  class="login-icon"><i class="bi bi-box-arrow-in-right"></i> Sign In</a>
+    </nav>
+
+      <button class="burger" id="burger" aria-label="Menu">
+        <svg id="burgerIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="mobile-nav" id="mobileNav">
+      <div class="mobile-nav-inner">
+        <a href="../home-page/index.html" class="nav-link" data-exact>Home</a>
+        <a href="../learn-page/learn.html" class="nav-link">Learn</a>
+        <a href="../quiz-page/quiz.html" class="nav-link">Quiz</a>
+        <a href="../dashboard-page/dashboard.html" class="nav-link">Dashboard</a>
+        <a href="../about-page/about.html" class="nav-link">About</a>
+        <a href="../sign-in/sign-in.html" class="login-icon"><i class="bi bi-box-arrow-in-right"></i> Sign In</a>
+      </div>
+    </nav>
+  </header>
+  <div class="dashboard-wrap">
+ 
+    <!-- ===================== HEADER ===================== -->
+    <header class="dashboard-header">
+      <div>
+        <h1>Welcome back, Student!</h1>
+        <p class="subtitle">Here's your learning progress and achievements.</p>
+      </div>
+      <button id="btnContinueLearning" class="btn btn-continue" type="button">
+        <i class="bi bi-play-fill"></i> Continue Learning
+      </button>
+    </header>
+ 
+    <!-- ===================== STAT CARDS ===================== -->
+    <section class="row g-3 section-gap">
+      <div class="col-6 col-lg-3">
+        <div class="card-panel stat-card hoverable reveal-on-scroll">
+          <div class="stat-top">
+            <div class="stat-icon bg-blue"><i class="bi bi-journal-check"></i></div>
+            <span class="stat-badge" id="statLessonsBadge">of 60</span>
+          </div>
+          <div class="stat-value" id="statLessonsCompleted">0</div>
+          <div class="stat-label">Lessons Completed</div>
+        </div>
+      </div>
+ 
+      <div class="col-6 col-lg-3">
+        <div class="card-panel stat-card hoverable reveal-on-scroll">
+          <div class="stat-top">
+            <div class="stat-icon bg-orange"><i class="bi bi-percent"></i></div>
+            <span class="stat-badge">Average</span>
+          </div>
+          <div class="stat-value" id="statQuizAverage">0%</div>
+          <div class="stat-label">Quiz Score Average</div>
+        </div>
+      </div>
+ 
+      <div class="col-6 col-lg-3">
+        <div class="card-panel stat-card hoverable reveal-on-scroll">
+          <div class="stat-top">
+            <div class="stat-icon bg-pink"><i class="bi bi-fire"></i></div>
+            <span class="stat-badge" id="statStreakBadge">Days</span>
+          </div>
+          <div class="stat-value" id="statStreak">0</div>
+          <div class="stat-label">Current Streak</div>
+        </div>
+      </div>
+ 
+      <div class="col-6 col-lg-3">
+        <div class="card-panel stat-card hoverable reveal-on-scroll">
+          <div class="stat-top">
+            <div class="stat-icon bg-purple"><i class="bi bi-clock-history"></i></div>
+            <span class="stat-badge">Hours</span>
+          </div>
+          <div class="stat-value" id="statLearningTime">0</div>
+          <div class="stat-label">Learning Time</div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ===================== PERFORMANCE + RECOMMENDATION ===================== -->
+    <section class="row g-3 section-gap">
+      <div class="col-lg-8">
+        <div class="card-panel chart-card hoverable reveal-on-scroll">
+          <div class="panel-title"><i class="bi bi-graph-up-arrow"></i> Performance Trend</div>
+          <p class="panel-subtitle">Your quiz scores over the past 6 weeks</p>
+          <canvas id="performanceChart" height="110"></canvas>
+        </div>
+      </div>
+ 
+      <div class="col-lg-4">
+        <div class="card-panel recommend-card reveal-on-scroll">
+          <div class="recommend-eyebrow"><i class="bi bi-star-fill"></i> Recommended Major</div>
+          <div class="recommend-major-row">
+            <span class="recommend-major-name" id="recommendMajorName">—</span>
+            <span class="recommend-percent" id="recommendPercent">0%</span>
+          </div>
+          <div class="recommend-progress">
+            <span id="recommendProgressBar" style="width:0%"></span>
+          </div>
+          <div class="panel-subtitle" style="color:#3c6a1e; margin-bottom:8px;">Based on:</div>
+          <ul class="recommend-reasons" id="recommendReasons"></ul>
+          <button id="btnRetakeQuiz" class="btn btn-retake" type="button">Retake Quiz</button>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ===================== TOPIC PROGRESS + RECENT ACTIVITY ===================== -->
+    <section class="row g-3 section-gap">
+      <div class="col-lg-8">
+        <div class="card-panel hoverable reveal-on-scroll">
+          <div class="panel-title">Topic Progress</div>
+          <p class="panel-subtitle">Your completion status across DSA topics</p>
+          <div id="topicProgressList"></div>
+        </div>
+      </div>
+ 
+      <div class="col-lg-4 d-flex flex-column gap-3">
+        <div class="card-panel hoverable reveal-on-scroll">
+          <div class="panel-title">Recent Activity</div>
+          <p class="panel-subtitle">Your latest milestones</p>
+          <div class="activity-list" id="activityList"></div>
+        </div>
+ 
+        <div class="card-panel hoverable reveal-on-scroll">
+          <div class="panel-title" style="margin-bottom:14px;">Quick Actions</div>
+          <div class="quick-actions">
+            <button id="btnOpenVisualizer" class="btn-quick" type="button">
+              <i class="bi bi-diagram-3-fill"></i> Open Visualizer
+            </button>
+            <button id="btnExploreMajor" class="btn-quick" type="button">
+              <i class="bi bi-compass-fill"></i> Explore Major
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ===================== TIME DISTRIBUTION ===================== -->
+    <section class="row g-3">
+      <div class="col-lg-8 mx-lg-auto">
+        <div class="card-panel pie-card hoverable reveal-on-scroll">
+          <div class="panel-title"><i class="bi bi-pie-chart-fill"></i> Time Distribution</div>
+          <p class="panel-subtitle">Hours spent on each topic</p>
+          <canvas id="timeChart" height="220"></canvas>
+          <div class="pie-legend" id="pieLegend"></div>
+        </div>
+      </div>
+    </section>
+ 
+  </div>
+   <!-- ===================== FOOTER ===================== -->
+  <footer>
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-6 col-lg-3">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <img src="../../images/icon.png" alt="Company Logo" width="50" height="50" style="border-radius: 10px;">
+            <strong class="text-white">EduPath</strong>
+          </div>
+          <p style="font-size:.8rem;color:#9aa0bd;">Empowering high school students to master Data Structures &amp; Algorithms and discover their tech path with interactive learning, roadmaps, and personalized quizzes.</p>
+          <p style="font-size:.78rem;margin-bottom:.2rem;"><i class="bi bi-envelope-fill me-2"></i>email@gmail.com</p>
+          <p style="font-size:.78rem;"><i class="bi bi-telephone-fill me-2"></i>+855 123456789</p>
+        </div>
+        <div class="col-6 col-lg-3">
+          <h6>Platform</h6>
+          <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Learn DSA</a></li>
+            <li><a href="#">Take quiz</a></li>
+            <li><a href="#">Dashboard</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-lg-3">
+          <h6>Resources</h6>
+          <ul>
+            <li><a href="#">Major information</a></li>
+            <li><a href="#">Career paths</a></li>
+            <li><a href="#">Learning materials</a></li>
+            <li><a href="#">Practice problem</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-lg-3">
+          <h6>Support</h6>
+          <ul>
+            <li><a href="#">FeedBack</a></li>
+            <li><a href="#">Help Centers</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Community</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+        <div class="footer-social">
+          <a href="#"><i class="bi bi-facebook"></i></a>
+          <a href="#"><i class="bi bi-instagram"></i></a>
+          <a href="#"><i class="bi bi-tiktok"></i></a>
+          <a href="#"><i class="bi bi-github"></i></a>
+          <a href="#"><i class="bi bi-google"></i></a>
+        </div>
+        <span>Royal University of Phnom Penh &middot; © 2026 Learning Tool. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="../learn-page/learn.js"></script>
+<script src="../quiz-page/quiz.js"></script>
+<script src="../dashboard-page/dashboard.js"></script></body>
+</html>
