@@ -1,0 +1,41 @@
+/* ==========================================================================
+   Global sticky-footer shell, used by every page that renders
+   Header + content + Footer.
+
+   ROOT CAUSE of the "white space below the footer" bug: each page's own
+   stylesheet sets its own `body { min-height: 100vh; background: ... }`,
+   but nothing ever stretched that page's actual content to fill the
+   viewport — so on any page shorter than the viewport (Learn, Quiz, ...),
+   the left-over space between the footer and the bottom of that 100vh
+   body box showed through in body's own background color, appearing as a
+   pale/white band below the dark footer.
+
+   Fix: make the page's own wrapping element a flex column that is itself
+   at least 100vh tall, and let its content area (not the footer) absorb
+   any extra space with flex: 1. Then <Footer> is always the last thing
+   in the box — flush against the bottom whether content is short or
+   long — instead of floating above unstyled left-over body space.
+   ========================================================================== */
+html, body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.page-shell > .page-shell-main {
+  flex: 1 0 auto;
+}
+
+/* Footer is a normal (non-flexed) child of .page-shell, so it always sits
+   directly after .page-shell-main — never stretched, never overlapped. */
+.page-shell > footer {
+  flex: 0 0 auto;
+}
