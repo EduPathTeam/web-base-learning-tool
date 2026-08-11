@@ -114,7 +114,10 @@ export function createApp() {
   app.use('/api/v1/auth/reset-password', authLimiter);
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/progress', progressRouter);
-  app.use('/api/v1/feedback', feedbackLimiter, feedbackRouter);
+  // Scoped to POST only (not app.use) so the rate limiter doesn't also
+  // throttle the admin GET /feedback listing route.
+  app.post('/api/v1/feedback', feedbackLimiter);
+  app.use('/api/v1/feedback', feedbackRouter);
 
   // Centralized error handler so a thrown/rejected error in any route
   // returns a clean JSON response instead of leaking a stack trace or

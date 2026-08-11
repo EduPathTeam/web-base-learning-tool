@@ -18,6 +18,7 @@ server/             Node + Express + MySQL API
     app.js          Express app config (exported for tests)
     index.js        Entry point — imports app.js, calls app.listen()
     routes/         auth, progress, feedback
+    middleware/     requireAuth, requireAdmin, asyncHandler
     db/             connection pool + migration runner
   migrations/       numbered .sql migration files
   test/             backend integration tests (node:test)
@@ -61,7 +62,7 @@ See `server/.env.example`. Never commit `server/.env` — it's gitignored.
 
 ## Known limitations
 
-See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, and password reset works (see below) — but there's still no email verification and no admin role.
+See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, password reset works, and there's a minimal admin feedback view (see below) — but there's still no email verification.
 
 ### Sessions
 
@@ -78,6 +79,16 @@ Requires `CSRF_SECRET` in `server/.env` (see `.env.example`) — a long random s
 `/forgot-password` → `POST /api/v1/auth/forgot-password` generates a random token, stores only its SHA-256 hash (`password_reset_tokens` table), and — **because no transactional email provider is configured yet** — logs the reset link to the **server console only**, clearly labeled `[DEV ONLY — no email provider configured]`. Copy that link from the terminal running `server`'s `npm run dev`/`npm start` to test the flow locally. Tokens expire after 1 hour and can only be used once. `/reset-password?token=...` (the link's destination) collects a new password and submits it to `POST /api/v1/auth/reset-password`.
 
 This is a deliberate interim state, not an oversight — wiring up a real email provider (e.g. SendGrid/Postmark/SES) is a separate decision requiring its own sign-off before being added.
+
+### Admin access
+
+`users.role` is `'student'` by default; `'admin'` unlocks `/admin/feedback` (lists all feedback submissions, paginated — see `GET /api/v1/feedback` in `server/src/routes/feedback.js`). There's no self-service admin promotion yet, so to make a local account an admin, run this against your local database after registering the account normally:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+Non-admins (including signed-out visitors) get a 403/401-style message if they visit `/admin/feedback` directly; the page isn't linked from the main nav.
 
 ### Production deployment note
 

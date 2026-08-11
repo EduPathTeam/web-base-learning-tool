@@ -32,7 +32,9 @@ authRouter.post('/register', asyncHandler(async (req, res) => {
   );
 
   req.session.userId = result.insertId;
-  res.status(201).json({ id: result.insertId, email, displayName: displayName.trim() });
+  // role is always 'student' at registration — there's no client-supplied
+  // override, it only ever comes from the column default.
+  res.status(201).json({ id: result.insertId, email, displayName: displayName.trim(), role: 'student' });
 }));
 
 authRouter.post('/login', asyncHandler(async (req, res) => {
@@ -40,7 +42,7 @@ authRouter.post('/login', asyncHandler(async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
 
   const [rows] = await pool.query(
-    'SELECT id, email, password_hash, display_name FROM users WHERE email = ?',
+    'SELECT id, email, password_hash, display_name, role FROM users WHERE email = ?',
     [email]
   );
   const user = rows[0];
@@ -50,7 +52,7 @@ authRouter.post('/login', asyncHandler(async (req, res) => {
   if (!valid) return res.status(401).json({ error: 'Invalid email or password.' });
 
   req.session.userId = user.id;
-  res.json({ id: user.id, email: user.email, displayName: user.display_name });
+  res.json({ id: user.id, email: user.email, displayName: user.display_name, role: user.role });
 }));
 
 authRouter.post('/logout', (req, res) => {
@@ -126,10 +128,10 @@ authRouter.post('/reset-password', asyncHandler(async (req, res) => {
 authRouter.get('/me', asyncHandler(async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'Not signed in.' });
   const [rows] = await pool.query(
-    'SELECT id, email, display_name FROM users WHERE id = ?',
+    'SELECT id, email, display_name, role FROM users WHERE id = ?',
     [req.session.userId]
   );
   const user = rows[0];
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
-  res.json({ id: user.id, email: user.email, displayName: user.display_name });
+  res.json({ id: user.id, email: user.email, displayName: user.display_name, role: user.role });
 }));

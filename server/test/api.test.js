@@ -19,6 +19,11 @@ const testPassword = 'password123';
 const resetEmail = `reset-test-${Date.now()}@example.com`;
 const resetPassword = 'password123';
 let resetUserId;
+const adminEmail = `admin-test-${Date.now()}@example.com`;
+const nonAdminEmail = `nonadmin-test-${Date.now()}@example.com`;
+const testUserPassword = 'password123';
+let adminCookie;
+let nonAdminCookie;
 
 function hashResetToken(rawToken) {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
@@ -79,6 +84,26 @@ async function api(path, { method = 'GET', body, cookie, omitCsrf = false } = {}
   return { status: res.status, data, cookie: extractCookie(res) };
 }
 
+// Registers a user with its own isolated session/CSRF pairing, so it
+// doesn't touch (or get touched by) the shared module-level session state
+// that most of the suite relies on. Returns the new user's id and session
+// cookie so callers can act as that user in later requests.
+async function registerIsolatedUser(email, password, displayName) {
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const setupCookie = [extractCookieNamed(tokenRes, 'connect.sid'), extractCookieNamed(tokenRes, 'csrf-token')]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: setupToken } = await tokenRes.json();
+  const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: setupCookie, 'x-csrf-token': setupToken },
+    body: JSON.stringify({ email, password, displayName }),
+  });
+  const data = await res.json();
+  const cookie = extractCookieNamed(res, 'connect.sid') || extractCookieNamed(tokenRes, 'connect.sid');
+  return { id: data.id, cookie };
+}
+
 before(async () => {
   app = createApp();
   server = app.listen(0);
@@ -86,22 +111,20 @@ before(async () => {
   baseUrl = `http://localhost:${server.address().port}`;
   await fetchCsrfToken();
 
-  // Dedicated user for the password-reset test group below, registered
-  // with its own isolated session/CSRF pairing so it doesn't touch the
-  // shared anonymous session that the early "without a session" tests
-  // depend on.
-  const setupTokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
-  const setupCookie = [extractCookieNamed(setupTokenRes, 'connect.sid'), extractCookieNamed(setupTokenRes, 'csrf-token')]
-    .filter(Boolean)
-    .join('; ');
-  const { csrfToken: setupToken } = await setupTokenRes.json();
-  const setupRes = await fetch(`${baseUrl}/api/v1/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Cookie: setupCookie, 'x-csrf-token': setupToken },
-    body: JSON.stringify({ email: resetEmail, password: resetPassword, displayName: 'Reset Test' }),
-  });
-  const setupData = await setupRes.json();
-  resetUserId = setupData.id;
+  // Dedicated user for the password-reset test group.
+  const resetSetup = await registerIsolatedUser(resetEmail, resetPassword, 'Reset Test');
+  resetUserId = resetSetup.id;
+
+  // Dedicated users for the admin-feedback test group: one promoted to
+  // admin directly via SQL (there's no self-service promotion — see
+  // README.md's "Admin access" section), one left as the 'student'
+  // default to prove non-admins are rejected.
+  const adminSetup = await registerIsolatedUser(adminEmail, testUserPassword, 'Admin Test');
+  await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [adminSetup.id]);
+  adminCookie = adminSetup.cookie;
+
+  const nonAdminSetup = await registerIsolatedUser(nonAdminEmail, testUserPassword, 'Non-Admin Test');
+  nonAdminCookie = nonAdminSetup.cookie;
 });
 
 after(async () => {
@@ -109,6 +132,8 @@ after(async () => {
   // password_reset_tokens rows for this user are removed via ON DELETE
   // CASCADE (see migration 003_add_password_reset_tokens.sql).
   await pool.query('DELETE FROM users WHERE email = ?', [resetEmail]);
+  await pool.query('DELETE FROM users WHERE email = ?', [adminEmail]);
+  await pool.query('DELETE FROM users WHERE email = ?', [nonAdminEmail]);
   await pool.query('DELETE FROM feedback WHERE email = ?', ['test-feedback@example.com']);
   // Stops the session store's periodic expired-session cleanup interval —
   // without this, node --test hangs after the suite finishes because the
@@ -392,4 +417,30 @@ test('POST /api/v1/auth/reset-password rejects an unknown token', async () => {
   });
   assert.equal(status, 400);
   assert.match(data.error, /invalid or has expired/i);
+});
+
+test('GET /api/v1/feedback as a signed-in non-admin is rejected with 403', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/feedback`, { headers: { Cookie: nonAdminCookie } });
+  const data = await res.json();
+  assert.equal(res.status, 403);
+  assert.match(data.error, /admin/i);
+});
+
+test('GET /api/v1/feedback without a session is rejected with 401', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/feedback`);
+  assert.equal(res.status, 401);
+});
+
+test('GET /api/v1/feedback as an admin returns the paginated list', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/feedback?page=1&limit=5`, { headers: { Cookie: adminCookie } });
+  const data = await res.json();
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(data.items));
+  assert.equal(data.page, 1);
+  assert.equal(data.limit, 5);
+  assert.ok(data.items.length <= 5);
+  // The anonymous-submission test earlier in this suite created at least
+  // one row, so the real total should reflect that.
+  assert.ok(data.total >= 1);
+  assert.equal(data.totalPages, Math.max(1, Math.ceil(data.total / 5)));
 });

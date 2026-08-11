@@ -11,6 +11,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import About from './pages/About';
 import Feedback from './pages/Feedback';
+import AdminFeedback from './pages/AdminFeedback';
 import ArrayLesson from './pages/lessons/ArrayLesson';
 import LinkedListLesson from './pages/lessons/LinkedListLesson';
 import QueueLesson from './pages/lessons/QueueLesson';
@@ -50,6 +51,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/feedback" element={<Feedback />} />
+      <Route path="/admin/feedback" element={<AdminFeedback />} />
       <Route path="*" element={<ComingSoon title="Page not found" />} />
     </Routes>
   );
