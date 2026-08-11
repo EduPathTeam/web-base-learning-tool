@@ -257,6 +257,36 @@ test('POST /api/v1/progress/lesson-complete for an unknown topic is rejected', a
   assert.equal(status, 404);
 });
 
+test('POST /api/v1/progress/last-lesson records the last-visited lesson URL', async () => {
+  const { status } = await api('/api/v1/progress/last-lesson', {
+    method: 'POST',
+    cookie: sessionCookie,
+    body: { topicId: 'queues', lessonUrl: '/learn/queue' },
+  });
+  assert.equal(status, 204);
+
+  const { data } = await api('/api/v1/progress', { cookie: sessionCookie });
+  assert.equal(data.lastLessonByTopic.queues, '/learn/queue');
+});
+
+test('POST /api/v1/progress/last-lesson without a session is rejected', async () => {
+  // Needs its own fresh anonymous session + CSRF pairing rather than the
+  // shared one, which is authenticated by this point in the suite (see
+  // the equivalent quiz-result test above for the same reasoning).
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const freshCookie = [extractCookieNamed(tokenRes, 'connect.sid'), extractCookieNamed(tokenRes, 'csrf-token')]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: freshToken } = await tokenRes.json();
+
+  const res = await fetch(`${baseUrl}/api/v1/progress/last-lesson`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: freshCookie, 'x-csrf-token': freshToken },
+    body: JSON.stringify({ topicId: 'queues', lessonUrl: '/learn/queue' }),
+  });
+  assert.equal(res.status, 401);
+});
+
 test('POST /api/v1/progress/quiz-result records a score', async () => {
   const { status } = await api('/api/v1/progress/quiz-result', {
     method: 'POST',

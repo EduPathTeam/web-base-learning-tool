@@ -46,7 +46,7 @@ Status legend used throughout this report:
 | API communication | Native `fetch` via a custom wrapper (`src/lib/apiClient.js`) | Frontend → backend HTTP calls with `credentials: 'include'` | ✅ COMPLETE |
 | Environment config | `dotenv` (backend only) | `server/.env` (gitignored) holds DB credentials, session secret, port, CORS origin | ✅ COMPLETE |
 | Rate limiting | `express-rate-limit` ^8.6.2 | Applied to `/auth/register`, `/auth/login` (20 req/15min), `/feedback` (10 req/15min) | ✅ COMPLETE (verified — 21st login attempt in a window returns HTTP 429) |
-| Testing | Node's built-in test runner (`node:test`, `node:assert/strict`) — no added dependency | Frontend: `src/lib/csPlatform.test.js` (20 tests, pure logic, including `mergeServerProgress`'s quiz-results fix). Backend: `server/test/api.test.js` (27 tests, real HTTP requests against the real Express app + local MySQL, including CSRF rejection, the full password-reset token lifecycle, and admin-only feedback access) | ✅ COMPLETE (47/47 passing) |
+| Testing | Node's built-in test runner (`node:test`, `node:assert/strict`) — no added dependency | Frontend: `src/lib/csPlatform.test.js` (20 tests, pure logic, including `mergeServerProgress`'s quiz-results fix). Backend: `server/test/api.test.js` (29 tests, real HTTP requests against the real Express app + local MySQL, including CSRF rejection, the full password-reset token lifecycle, admin-only feedback access, and `last-lesson`) | ✅ COMPLETE (49/49 passing) |
 | Linting | None found | No ESLint/Prettier config in either `package.json` | 🔴 NOT IMPLEMENTED |
 
 ---
@@ -196,7 +196,7 @@ Each of the 12 files in `src/pages/lessons/` was checked and contains, in this o
 | `GET /api/v1/auth/me` | Session | Returns current user or 401 | ✅ COMPLETE (tested) |
 | `GET /api/v1/progress` | Session | Returns topics, `completedLessons`, `quizResults`, `lastLessonByTopic` for the logged-in user | ✅ COMPLETE (tested) |
 | `POST /api/v1/progress/lesson-complete` | Session | Increments `completed_count` for a topic (capped at `total_lessons`), upserts | ✅ COMPLETE (tested, including the unknown-topic-id → 404 case) |
-| `POST /api/v1/progress/last-lesson` | Session | Upserts the last-visited lesson URL for a topic | ⚠️ NEEDS TESTING (still not directly covered by an automated test, though it is called by the frontend on every lesson-page load; low risk since it shares its implementation pattern with the tested `lesson-complete` route) |
+| `POST /api/v1/progress/last-lesson` | Session | Upserts the last-visited lesson URL for a topic | ✅ COMPLETE (tested: happy path via a round-trip through `GET /progress`, and no-session → 401). **Note:** unlike `lesson-complete`, this route does not validate `topicId` against the `topics` table before inserting — an unknown topic id would hit the `lesson_progress.topic_id` foreign key constraint and surface as an unhandled 500 rather than a clean 404. Not fixed here (out of scope for "add the missing test"), flagging since it's a real inconsistency between two very similar routes. |
 | `POST /api/v1/progress/quiz-result` | Session | Inserts a quiz score row (0–100) | ✅ COMPLETE (tested, including out-of-range-score → 400) |
 | `POST /api/v1/feedback` | No (optional session) | Validates and inserts a feedback row; tags `user_id` if signed in, else `NULL` | ✅ COMPLETE (tested, including missing-message → 400) |
 | `GET /api/v1/feedback` | Admin only (`requireAdmin`) | Lists all feedback, newest first, paginated (`?page=`/`?limit=`, default 20/page, max 100) | ✅ COMPLETE (tested: 401 without a session, 403 for a signed-in non-admin, 200 with a correctly-shaped page for an admin) |
@@ -252,7 +252,7 @@ Verified in this session via `curl` + direct MySQL queries:
 - A feedback submission was correctly inserted with a `NULL` `user_id` when unauthenticated.
 - Invalid login correctly returned 401 without creating a session.
 
-🟡 That initial verification was manual `curl`-based testing. **Since then, `server/test/api.test.js` automates all of the above (27 tests) and can be re-run at any time with `npm test` from `server/`** — it creates uniquely-emailed test users (including one manually promoted to admin via a direct `UPDATE`, exercising the same manual path documented in README.md) and a tagged feedback row, exercises the flows above, and deletes everything it created in an `after()` cleanup hook so it never leaves residue in the real database.
+🟡 That initial verification was manual `curl`-based testing. **Since then, `server/test/api.test.js` automates all of the above (29 tests) and can be re-run at any time with `npm test` from `server/`** — it creates uniquely-emailed test users (including one manually promoted to admin via a direct `UPDATE`, exercising the same manual path documented in README.md) and a tagged feedback row, exercises the flows above, and deletes everything it created in an `after()` cleanup hook so it never leaves residue in the real database.
 
 ---
 
@@ -340,7 +340,7 @@ Confirmed present in `Dashboard.jsx`:
 | Unit tests | ✅ COMPLETE — `src/lib/csPlatform.test.js`, 20 tests covering TOPICS shape, `markLessonComplete` (including the cap-at-total case and unknown-topic no-op), `recordQuizResult` (including score clamping), `computeAverageScore`, `computeTotals`, `computeRecommendedMajor` (both the null-until-a-quiz-is-taken case and the percent-clamped-to-60–98 case), `findContinueLearningUrl` (all 3 branches), `addLearningMinutes`, `computeTotalLearningHours`, `timeAgo`, and `mergeServerProgress` (lesson-count merge direction, quiz-results adopted once the server catches up, a newer local attempt preserved when the server hasn't, an untouched topic left alone). Run with `npm test` from the project root. |
 | Integration tests | ✅ COMPLETE — `server/test/api.test.js`, 17 tests making real HTTP requests to the real Express app (in-process, ephemeral port) against the real local MySQL database: health check, session-required rejection, registration validation (bad email, short password, duplicate email), full register→session→`/me` flow, wrong-password rejection, login, lesson-complete (including unknown-topic → 404), quiz-result (including out-of-range → 400, no-session → 401), logout, anonymous feedback submission, feedback validation. Run with `npm test` from `server/`. Cleans up all rows it creates. |
 | End-to-end / browser tests | 🔴 NOT IMPLEMENTED — no Playwright/Cypress/similar; nothing clicks through the actual rendered UI in a real browser |
-| Automated test run (this session) | Both suites executed and passed: frontend 20/20, backend 27/27 (47/47 total) |
+| Automated test run (this session) | Both suites executed and passed: frontend 20/20, backend 29/29 (49/49 total) |
 | Manual testing performed (this session) | `npm run build` confirmed passing (twice — before and after the stabilization edits); a live curl-based run through register → lesson-complete → quiz-result → get-progress; a 25-request burst against `/auth/login` confirmed the new rate limiter returns 429 after the 20th attempt; all 19 frontend routes confirmed returning HTTP 200 |
 | Manual testing NOT performed | No click-through browser testing of the rendered UI (clicking buttons, watching animations, resizing for mobile) was performed — everything above is either an automated test or a scripted HTTP/build check, not a human clicking through the app in a browser |
 
@@ -378,7 +378,7 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 |---|---|---|---|
 | 1 | ~~Nothing committed to git — all Semester 2 work is uncommitted~~ | ~~High (risk of data loss)~~ | ✅ Fixed — committed to `main`, see §14 |
 | 2 | ~~Session store is in-memory (`express-session` default) — not production-viable~~ | ~~Medium~~ | ✅ Fixed — MySQL-backed via `express-mysql-session`, see §5.1 |
-| 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 47 tests across frontend + backend, see §13 |
+| 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 49 tests across frontend + backend, see §13 |
 | 4 | ~~No rate limiting on login/register/feedback endpoints~~ | ~~Medium (security)~~ | ✅ Fixed — see §5.1 |
 | 5 | ~~`addLearningMinutes()` exists but nothing calls it~~ | ~~Medium (functional gap)~~ | ✅ Fixed — see §8 |
 | 6 | ~~Dashboard's Time Distribution chart only supports 5 of 12 topics~~ | ~~Low~~ | ✅ Fixed — see §10 |
@@ -386,7 +386,7 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 | 8 | ~~No password reset~~; email verification and role-based access | Medium (feature gap) | Password reset ✅ fixed, see §7. Email verification and role-based access 🔴 still open — explicitly deferred pending scope decisions, see §16. |
 | 9 | ~~Progress sync between server and localStorage is one-way-on-login only~~ | ~~Low–Medium~~ | ✅ Improved — now also re-pulls on Dashboard mount and tab-focus-regained, see §8. Still one-way (server → local, no push); that remains a deliberate scope decision, not a gap. |
 | 10 | ~~No admin interface to review feedback submissions~~ | ~~Low~~ | ✅ Fixed — see §11 |
-| 11 | `POST /api/v1/progress/last-lesson` has no dedicated automated test | Low | ⚠️ Needs testing — see §5.2 |
+| 11 | ~~`POST /api/v1/progress/last-lesson` has no dedicated automated test~~ | ~~Low~~ | ✅ Fixed — see §5.2. (Surfaced a separate, unfixed inconsistency: this route doesn't validate `topicId` like `lesson-complete` does — see §5.2's note.) |
 | 12 | Database Systems / Java / Probability & Statistics are not learner-facing subjects | N/A | Not an issue — explicit scope decision, see §12 |
 
 ---
@@ -415,12 +415,12 @@ The following are **not implemented** and are listed here only to separate them 
 | All 12 DSA lesson pages | ✅ COMPLETE |
 | Quiz system (per-lesson, 5 questions each) | ✅ COMPLETE (including Quiz Hub scroll-to-quiz fix) |
 | Dashboard (stats, charts, activity) | ✅ COMPLETE (learning-time data path fixed, chart covers all 12 topics) |
-| Backend REST API | ✅ COMPLETE (all routes tested except `last-lesson`, which is ⚠️ needs a dedicated test) |
+| Backend REST API | ✅ COMPLETE (all routes tested, including `last-lesson`) |
 | MySQL database + schema | ✅ COMPLETE (tested) |
 | Authentication (register/login/session/password reset/roles) | ✅ COMPLETE (production-viable MySQL-backed session store, CSRF protection, working password reset, and role-based authorization — see §7. Email verification remains an explicit, deferred scope decision, not a gap — see §16.) |
 | Rate limiting | ✅ COMPLETE (auth, reset-password, and feedback-submission endpoints) |
 | Feedback system | ✅ COMPLETE (tested, including the admin-only listing view — see §11) |
 | Frontend ↔ backend integration | ✅ COMPLETE (tested for core flows) |
-| Automated testing | ✅ COMPLETE (47 tests: 20 frontend unit, 27 backend integration, both passing) |
+| Automated testing | ✅ COMPLETE (49 tests: 20 frontend unit, 29 backend integration, both passing) |
 | Version control (commits) | ✅ COMPLETE — committed to `main`, tracked with `origin/main` (see §14) |
 | Database Systems / Java / Probability & Statistics | Out of scope by explicit decision — not gaps (§12) |
