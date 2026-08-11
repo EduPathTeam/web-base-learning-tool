@@ -22,17 +22,59 @@ import { apiGet, apiPost } from './apiClient.js';
 
 export const TOPICS = [
   { id: 'arrays', name: 'Arrays', total: 10, lessonUrl: '/learn/array', quizUrl: '/quiz/arrays' },
-  { id: 'linked-lists', name: 'Linked Lists', total: 10, lessonUrl: '/learn/linked-list', quizUrl: '/quiz/linked-lists' },
+  {
+    id: 'linked-lists',
+    name: 'Linked Lists',
+    total: 10,
+    lessonUrl: '/learn/linked-list',
+    quizUrl: '/quiz/linked-lists',
+  },
   { id: 'queues', name: 'Queue', total: 10, lessonUrl: '/learn/queue', quizUrl: '/quiz/queues' },
   { id: 'stacks', name: 'Stack', total: 10, lessonUrl: '/learn/stack', quizUrl: '/quiz/stacks' },
   { id: 'trees', name: 'Trees', total: 10, lessonUrl: '/learn/tree', quizUrl: '/quiz/trees' },
   { id: 'graphs', name: 'Graphs', total: 10, lessonUrl: '/learn/graph', quizUrl: '/quiz/graphs' },
-  { id: 'recursion', name: 'Recursion', total: 10, lessonUrl: '/learn/recursion', quizUrl: '/quiz/recursion' },
-  { id: 'dynamic-programming', name: 'Dynamic Programming', total: 10, lessonUrl: '/learn/dynamic-programming', quizUrl: '/quiz/dynamic-programming' },
-  { id: 'sorting', name: 'Sorting', total: 10, lessonUrl: '/learn/sorting', quizUrl: '/quiz/sorting' },
-  { id: 'searching', name: 'Searching', total: 10, lessonUrl: '/learn/searching', quizUrl: '/quiz/searching' },
-  { id: 'greedy', name: 'Greedy Algorithm', total: 10, lessonUrl: '/learn/greedy', quizUrl: '/quiz/greedy' },
-  { id: 'big-o', name: 'Big-O Notation', total: 10, lessonUrl: '/learn/big-o', quizUrl: '/quiz/big-o' },
+  {
+    id: 'recursion',
+    name: 'Recursion',
+    total: 10,
+    lessonUrl: '/learn/recursion',
+    quizUrl: '/quiz/recursion',
+  },
+  {
+    id: 'dynamic-programming',
+    name: 'Dynamic Programming',
+    total: 10,
+    lessonUrl: '/learn/dynamic-programming',
+    quizUrl: '/quiz/dynamic-programming',
+  },
+  {
+    id: 'sorting',
+    name: 'Sorting',
+    total: 10,
+    lessonUrl: '/learn/sorting',
+    quizUrl: '/quiz/sorting',
+  },
+  {
+    id: 'searching',
+    name: 'Searching',
+    total: 10,
+    lessonUrl: '/learn/searching',
+    quizUrl: '/quiz/searching',
+  },
+  {
+    id: 'greedy',
+    name: 'Greedy Algorithm',
+    total: 10,
+    lessonUrl: '/learn/greedy',
+    quizUrl: '/quiz/greedy',
+  },
+  {
+    id: 'big-o',
+    name: 'Big-O Notation',
+    total: 10,
+    lessonUrl: '/learn/big-o',
+    quizUrl: '/quiz/big-o',
+  },
 ];
 
 export const FIRST_LESSON_URL = '/learn/array';

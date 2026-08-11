@@ -25,10 +25,18 @@ export default function AdminFeedback() {
     setLoading(true);
     setError('');
     apiGet(`/feedback?page=${page}&limit=${PAGE_SIZE}`)
-      .then((data) => { if (!cancelled) setResult(data); })
-      .catch((err) => { if (!cancelled) setError(err.message); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .then((data) => {
+        if (!cancelled) setResult(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isAdmin, page]);
 
   if (authLoading) {
@@ -36,7 +44,9 @@ export default function AdminFeedback() {
       <div className="page-shell">
         <Header />
         <div className="page-shell-main">
-          <div className="container section-pad"><p>Loading…</p></div>
+          <div className="container section-pad">
+            <p>Loading…</p>
+          </div>
         </div>
         <Footer />
       </div>
@@ -50,8 +60,14 @@ export default function AdminFeedback() {
         <div className="page-shell-main">
           <div className="container section-pad text-center">
             <h1>403 — Admins Only</h1>
-            <p>{user ? "Your account doesn't have admin access." : 'Please sign in with an admin account to view this page.'}</p>
-            <Link to="/" className="btn-primary-custom">Back to Home</Link>
+            <p>
+              {user
+                ? "Your account doesn't have admin access."
+                : 'Please sign in with an admin account to view this page.'}
+            </p>
+            <Link to="/" className="btn-primary-custom">
+              Back to Home
+            </Link>
           </div>
         </div>
         <Footer />
@@ -87,16 +103,23 @@ export default function AdminFeedback() {
                   <tbody>
                     {result.items.map((item) => (
                       <tr key={item.id}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{new Date(item.created_at).toLocaleString()}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {new Date(item.created_at).toLocaleString()}
+                        </td>
                         <td>{item.name}</td>
                         <td>{item.email}</td>
                         <td>{item.category}</td>
-                        <td>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</td>
+                        <td>
+                          {'★'.repeat(item.rating)}
+                          {'☆'.repeat(5 - item.rating)}
+                        </td>
                         <td style={{ maxWidth: '360px' }}>{item.message}</td>
                       </tr>
                     ))}
                     {result.items.length === 0 && (
-                      <tr><td colSpan={6}>No feedback submitted yet.</td></tr>
+                      <tr>
+                        <td colSpan={6}>No feedback submitted yet.</td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -111,7 +134,9 @@ export default function AdminFeedback() {
                 >
                   Previous
                 </button>
-                <span>Page {result.page} of {result.totalPages}</span>
+                <span>
+                  Page {result.page} of {result.totalPages}
+                </span>
                 <button
                   type="button"
                   className="btn-primary-custom"

@@ -90,17 +90,25 @@ async function api(path, { method = 'GET', body, cookie, omitCsrf = false } = {}
 // cookie so callers can act as that user in later requests.
 async function registerIsolatedUser(email, password, displayName) {
   const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
-  const setupCookie = [extractCookieNamed(tokenRes, 'connect.sid'), extractCookieNamed(tokenRes, 'csrf-token')]
+  const setupCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
     .filter(Boolean)
     .join('; ');
   const { csrfToken: setupToken } = await tokenRes.json();
   const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Cookie: setupCookie, 'x-csrf-token': setupToken },
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: setupCookie,
+      'x-csrf-token': setupToken,
+    },
     body: JSON.stringify({ email, password, displayName }),
   });
   const data = await res.json();
-  const cookie = extractCookieNamed(res, 'connect.sid') || extractCookieNamed(tokenRes, 'connect.sid');
+  const cookie =
+    extractCookieNamed(res, 'connect.sid') || extractCookieNamed(tokenRes, 'connect.sid');
   return { id: data.id, cookie };
 }
 
@@ -123,7 +131,11 @@ before(async () => {
   await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [adminSetup.id]);
   adminCookie = adminSetup.cookie;
 
-  const nonAdminSetup = await registerIsolatedUser(nonAdminEmail, testUserPassword, 'Non-Admin Test');
+  const nonAdminSetup = await registerIsolatedUser(
+    nonAdminEmail,
+    testUserPassword,
+    'Non-Admin Test'
+  );
   nonAdminCookie = nonAdminSetup.cookie;
 });
 
@@ -152,7 +164,11 @@ test('GET /api/v1/health returns ok', async () => {
 test('POST without a valid CSRF token is rejected', async () => {
   const { status, data } = await api('/api/v1/auth/register', {
     method: 'POST',
-    body: { email: 'csrf-rejection-test@example.com', password: testPassword, displayName: 'CSRF Test' },
+    body: {
+      email: 'csrf-rejection-test@example.com',
+      password: testPassword,
+      displayName: 'CSRF Test',
+    },
     omitCsrf: true,
   });
   assert.equal(status, 403);
@@ -274,14 +290,21 @@ test('POST /api/v1/progress/last-lesson without a session is rejected', async ()
   // shared one, which is authenticated by this point in the suite (see
   // the equivalent quiz-result test above for the same reasoning).
   const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
-  const freshCookie = [extractCookieNamed(tokenRes, 'connect.sid'), extractCookieNamed(tokenRes, 'csrf-token')]
+  const freshCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
     .filter(Boolean)
     .join('; ');
   const { csrfToken: freshToken } = await tokenRes.json();
 
   const res = await fetch(`${baseUrl}/api/v1/progress/last-lesson`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Cookie: freshCookie, 'x-csrf-token': freshToken },
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: freshCookie,
+      'x-csrf-token': freshToken,
+    },
     body: JSON.stringify({ topicId: 'queues', lessonUrl: '/learn/queue' }),
   });
   assert.equal(res.status, 401);
@@ -316,14 +339,21 @@ test('POST /api/v1/progress/quiz-result without a session is rejected', async ()
   // test. A brand-new pairing has no userId attached, so it still clears
   // CSRF validation but correctly fails the auth check.
   const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
-  const freshCookie = [extractCookieNamed(tokenRes, 'connect.sid'), extractCookieNamed(tokenRes, 'csrf-token')]
+  const freshCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
     .filter(Boolean)
     .join('; ');
   const { csrfToken: freshToken } = await tokenRes.json();
 
   const res = await fetch(`${baseUrl}/api/v1/progress/quiz-result`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Cookie: freshCookie, 'x-csrf-token': freshToken },
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: freshCookie,
+      'x-csrf-token': freshToken,
+    },
     body: JSON.stringify({ topicId: 'arrays', score: 50 }),
   });
   assert.equal(res.status, 401);
@@ -377,7 +407,10 @@ test('POST /api/v1/auth/forgot-password responds identically for a registered an
 });
 
 test('POST /api/v1/auth/forgot-password creates a reset token for a registered email', async () => {
-  const { status } = await api('/api/v1/auth/forgot-password', { method: 'POST', body: { email: resetEmail } });
+  const { status } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: resetEmail },
+  });
   assert.equal(status, 200);
 
   const [rows] = await pool.query(
@@ -389,11 +422,10 @@ test('POST /api/v1/auth/forgot-password creates a reset token for a registered e
 
 test('POST /api/v1/auth/reset-password succeeds with a valid token and the new password can log in', async () => {
   const rawToken = crypto.randomBytes(32).toString('hex');
-  await pool.query('INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)', [
-    resetUserId,
-    hashResetToken(rawToken),
-    new Date(Date.now() + 60 * 60 * 1000),
-  ]);
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+    [resetUserId, hashResetToken(rawToken), new Date(Date.now() + 60 * 60 * 1000)]
+  );
 
   const { status } = await api('/api/v1/auth/reset-password', {
     method: 'POST',
@@ -411,11 +443,10 @@ test('POST /api/v1/auth/reset-password succeeds with a valid token and the new p
 
 test('POST /api/v1/auth/reset-password rejects an expired token', async () => {
   const rawToken = crypto.randomBytes(32).toString('hex');
-  await pool.query('INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)', [
-    resetUserId,
-    hashResetToken(rawToken),
-    new Date(Date.now() - 60 * 1000),
-  ]);
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+    [resetUserId, hashResetToken(rawToken), new Date(Date.now() - 60 * 1000)]
+  );
 
   const { status, data } = await api('/api/v1/auth/reset-password', {
     method: 'POST',
@@ -462,7 +493,9 @@ test('GET /api/v1/feedback without a session is rejected with 401', async () => 
 });
 
 test('GET /api/v1/feedback as an admin returns the paginated list', async () => {
-  const res = await fetch(`${baseUrl}/api/v1/feedback?page=1&limit=5`, { headers: { Cookie: adminCookie } });
+  const res = await fetch(`${baseUrl}/api/v1/feedback?page=1&limit=5`, {
+    headers: { Cookie: adminCookie },
+  });
   const data = await res.json();
   assert.equal(res.status, 200);
   assert.ok(Array.isArray(data.items));

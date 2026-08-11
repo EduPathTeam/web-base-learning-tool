@@ -49,7 +49,9 @@ export default function ResetPassword() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+          <Link to="/" className="auth-logo">
+            Edu<span>Path</span>
+          </Link>
           <h1 className="auth-title">Password Updated</h1>
           <div className="auth-success" role="status">
             Your password has been reset. You can now sign in with your new password.
@@ -65,7 +67,9 @@ export default function ResetPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+        <Link to="/" className="auth-logo">
+          Edu<span>Path</span>
+        </Link>
         <h1 className="auth-title">Reset Password</h1>
         <p className="auth-subtitle">Choose a new password for your account.</p>
 
@@ -74,7 +78,11 @@ export default function ResetPassword() {
             This link is missing its reset token. Please request a new password reset link.
           </div>
         )}
-        {error && <div className="auth-error" role="alert">{error}</div>}
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="auth-field">
@@ -110,7 +118,8 @@ export default function ResetPassword() {
         </form>
 
         <p className="auth-switch">
-          <Link to="/forgot-password">Request a new link</Link> &middot; <Link to="/sign-in">Back to Sign In</Link>
+          <Link to="/forgot-password">Request a new link</Link> &middot;{' '}
+          <Link to="/sign-in">Back to Sign In</Link>
         </p>
       </div>
     </div>

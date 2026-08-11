@@ -14,11 +14,21 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 
 class MemoryStorage {
-  constructor() { this.store = new Map(); }
-  getItem(key) { return this.store.has(key) ? this.store.get(key) : null; }
-  setItem(key, value) { this.store.set(key, String(value)); }
-  removeItem(key) { this.store.delete(key); }
-  clear() { this.store.clear(); }
+  constructor() {
+    this.store = new Map();
+  }
+  getItem(key) {
+    return this.store.has(key) ? this.store.get(key) : null;
+  }
+  setItem(key, value) {
+    this.store.set(key, String(value));
+  }
+  removeItem(key) {
+    this.store.delete(key);
+  }
+  clear() {
+    this.store.clear();
+  }
 }
 
 let csPlatform;
@@ -36,11 +46,20 @@ function freshData() {
 test('TOPICS contains exactly the 12 DSA topics, each with a 10-lesson total', () => {
   assert.equal(csPlatform.TOPICS.length, 12);
   const ids = csPlatform.TOPICS.map((t) => t.id);
-  assert.deepEqual(
-    ids,
-    ['arrays', 'linked-lists', 'queues', 'stacks', 'trees', 'graphs', 'recursion',
-     'dynamic-programming', 'sorting', 'searching', 'greedy', 'big-o']
-  );
+  assert.deepEqual(ids, [
+    'arrays',
+    'linked-lists',
+    'queues',
+    'stacks',
+    'trees',
+    'graphs',
+    'recursion',
+    'dynamic-programming',
+    'sorting',
+    'searching',
+    'greedy',
+    'big-o',
+  ]);
   csPlatform.TOPICS.forEach((t) => assert.equal(t.total, 10));
 });
 
@@ -55,7 +74,11 @@ test('markLessonComplete increments the topic count and is capped at the topic t
   freshData();
   for (let i = 0; i < 12; i++) csPlatform.markLessonComplete('arrays');
   const data = csPlatform.getData();
-  assert.equal(data.completedLessons.arrays, 10, 'should cap at total_lessons (10), not overshoot to 12');
+  assert.equal(
+    data.completedLessons.arrays,
+    10,
+    'should cap at total_lessons (10), not overshoot to 12'
+  );
 });
 
 test('markLessonComplete on an unknown topic id is a safe no-op', () => {

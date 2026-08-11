@@ -22,7 +22,9 @@ export default function useProgressSync(onSync) {
     let cancelled = false;
     function runSync() {
       syncFromServer()
-        .then(() => { if (!cancelled) onSyncRef.current?.(); })
+        .then(() => {
+          if (!cancelled) onSyncRef.current?.();
+        })
         .catch((err) => console.warn('Progress sync failed:', err.message));
     }
 

@@ -28,7 +28,9 @@ export default function QuizPage() {
           <section className="content-card fade-in">
             <h1 className="section-title">Quiz not found</h1>
             <p className="section-text">That topic doesn't have a quiz yet.</p>
-            <Link to="/quiz" className="btn btn-hero btn-hero-primary">Back to Quizzes</Link>
+            <Link to="/quiz" className="btn btn-hero btn-hero-primary">
+              Back to Quizzes
+            </Link>
           </section>
         </main>
         <Footer />
@@ -41,10 +43,23 @@ export default function QuizPage() {
       <Header />
 
       <main className="container page-content page-shell-main" style={{ paddingTop: '140px' }}>
-        <section className="content-card fade-in" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <section
+          className="content-card fade-in"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}
+        >
           <div>
-            <h1 className="section-title" style={{ marginBottom: 4 }}>{topic.name} Quiz</h1>
-            <p className="section-text" style={{ margin: 0 }}>5 questions &middot; test what you learned in the {topic.name} lesson.</p>
+            <h1 className="section-title" style={{ marginBottom: 4 }}>
+              {topic.name} Quiz
+            </h1>
+            <p className="section-text" style={{ margin: 0 }}>
+              5 questions &middot; test what you learned in the {topic.name} lesson.
+            </p>
           </div>
           <Link to={topic.lessonUrl} className="btn btn-hero btn-hero-outline">
             <i className="bi bi-arrow-left"></i> Back to Lesson

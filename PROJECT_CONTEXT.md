@@ -54,6 +54,7 @@ Read this first. It gives a new AI session (or developer) a complete picture of 
 **No real database exists.** The only persistence is browser `localStorage`, under key `csPlatformData_v2`, managed exclusively by `window.CSPlatform` in `pages/dashboard-page/dashboard.js`.
 
 **Schema (the localStorage blob):**
+
 ```
 {
   completedLessons: { <topicId>: number },       // 0..topic.total (10 per topic)
@@ -66,19 +67,21 @@ Read this first. It gives a new AI session (or developer) a complete picture of 
   recommendedMajor: { name, percent, reasons } | null
 }
 ```
+
 `TOPICS` (6 fixed topics, 10 lessons each = 60 total): `arrays`, `linked-lists`, `stacks-queues`, `trees`, `graphs`, `sorting`.
 
 **Public API (`window.CSPlatform`):** `getData()`, `saveData(data)`, `markLessonComplete(topicId)`, `recordQuizResult(topicId, score)`, `setLastLesson(topicId, url)`, `addLearningMinutes(topicId, minutes)`, `findContinueLearningUrl(data)`.
 
 **Critical gap:** no other page (quiz, learn) actually calls these write methods. Only `dashboard.js` itself reads/writes the blob (to record the active date on load). So in normal usage, taking the quiz or completing a lesson has **zero effect** on the dashboard — the write path is dead code from the UI's perspective. This is the single biggest functional gap in the app.
 
-For proposed *real* database design (once a backend exists), see `SYSTEM_ARCHITECTURE.md` §3.
+For proposed _real_ database design (once a backend exists), see `SYSTEM_ARCHITECTURE.md` §3.
 
 ---
 
 ## API Architecture
 
 **None exists.** No server, no endpoints, no fetch/AJAX/XHR calls anywhere in the codebase. Every "submission" is client-side only:
+
 - Sign-in form: `action="#"`, no submit handler at all.
 - Feedback form (`testCode-Page/test.js`): fakes a network call with `setTimeout` (~600ms "sending" + 3.2s before resetting), shows a fake success message, sends/stores nothing.
 - Quiz: results live only in in-memory JS variables for the current page session.

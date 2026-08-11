@@ -43,7 +43,9 @@ async function request(path, options = {}, isRetry = false) {
     // (`npm run dev`) is running and the backend (`npm run dev` in
     // server/) was never started. Surface something a user can act on
     // instead of a raw "Failed to fetch" / "NetworkError".
-    throw new Error("Can't reach the server. Please check your connection, or ask an admin if the issue continues.");
+    throw new Error(
+      "Can't reach the server. Please check your connection, or ask an admin if the issue continues."
+    );
   }
 
   const isJson = res.headers.get('content-type')?.includes('application/json');
@@ -64,4 +66,5 @@ async function request(path, options = {}, isRetry = false) {
 }
 
 export const apiGet = (path) => request(path, { method: 'GET' });
-export const apiPost = (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) });
+export const apiPost = (path, data) =>
+  request(path, { method: 'POST', body: JSON.stringify(data) });

@@ -21,10 +21,12 @@ export default function QuizHub() {
 
       <main className="container page-content page-shell-main" style={{ paddingTop: '140px' }}>
         <section className="content-card fade-in">
-          <h1 className="section-title" style={{ fontSize: '2rem' }}>Quizzes</h1>
+          <h1 className="section-title" style={{ fontSize: '2rem' }}>
+            Quizzes
+          </h1>
           <p className="section-text">
-            Every topic has its own 5-question quiz, separate from its lesson. Pick a topic below to start — your
-            best score is saved to your Dashboard automatically.
+            Every topic has its own 5-question quiz, separate from its lesson. Pick a topic below to
+            start — your best score is saved to your Dashboard automatically.
           </p>
         </section>
 
@@ -35,9 +37,15 @@ export default function QuizHub() {
               const best = scores.length ? Math.max(...scores) : null;
               return (
                 <div key={topic.id} className="col-6 col-lg-4">
-                  <Link to={topic.quizUrl} className="op-card op-gray" style={{ display: 'block', textDecoration: 'none' }}>
+                  <Link
+                    to={topic.quizUrl}
+                    className="op-card op-gray"
+                    style={{ display: 'block', textDecoration: 'none' }}
+                  >
                     <h5 style={{ marginBottom: 4 }}>{topic.name}</h5>
-                    <p style={{ margin: 0 }}>{best !== null ? `Best score: ${best}%` : 'Not attempted yet'}</p>
+                    <p style={{ margin: 0 }}>
+                      {best !== null ? `Best score: ${best}%` : 'Not attempted yet'}
+                    </p>
                   </Link>
                 </div>
               );

@@ -24,9 +24,17 @@ const ALGORITHM_LESSONS = [
 
 function LessonButton({ lesson }) {
   if (lesson.ready) {
-    return <Link to={lesson.to} className="lesson-btn">{lesson.label}</Link>;
+    return (
+      <Link to={lesson.to} className="lesson-btn">
+        {lesson.label}
+      </Link>
+    );
   }
-  return <button type="button" className="lesson-btn" disabled title="Coming soon">{lesson.label} <small>(soon)</small></button>;
+  return (
+    <button type="button" className="lesson-btn" disabled title="Coming soon">
+      {lesson.label} <small>(soon)</small>
+    </button>
+  );
 }
 
 export default function Learn() {
@@ -45,25 +53,35 @@ export default function Learn() {
           <section className="lesson-col">
             <div className="lesson-wrapper">
               <div className="section-header-pill header-green">
-                <span className="header-icon"><i className="bi bi-database-fill"></i></span>
+                <span className="header-icon">
+                  <i className="bi bi-database-fill"></i>
+                </span>
                 <span className="header-text">Data Structure</span>
               </div>
               <div className="lesson-card card-green">
-                {DATA_STRUCTURE_LESSONS.map((l) => <LessonButton key={l.to} lesson={l} />)}
+                {DATA_STRUCTURE_LESSONS.map((l) => (
+                  <LessonButton key={l.to} lesson={l} />
+                ))}
               </div>
             </div>
           </section>
 
-          <div className="divider-col"><div className="vertical-divider"></div></div>
+          <div className="divider-col">
+            <div className="vertical-divider"></div>
+          </div>
 
           <section className="lesson-col">
             <div className="lesson-wrapper">
               <div className="section-header-pill header-blue">
-                <span className="header-icon"><i className="bi bi-gear-fill"></i></span>
+                <span className="header-icon">
+                  <i className="bi bi-gear-fill"></i>
+                </span>
                 <span className="header-text">Algorithm</span>
               </div>
               <div className="lesson-card card-blue">
-                {ALGORITHM_LESSONS.map((l) => <LessonButton key={l.to} lesson={l} />)}
+                {ALGORITHM_LESSONS.map((l) => (
+                  <LessonButton key={l.to} lesson={l} />
+                ))}
               </div>
             </div>
           </section>

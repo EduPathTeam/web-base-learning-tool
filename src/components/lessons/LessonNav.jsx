@@ -6,16 +6,24 @@ export default function LessonNav({ prev, next }) {
       <div className="lesson-nav-row">
         {prev ? (
           <Link to={prev.to} className="lesson-nav-link prev">
-            <span className="lesson-nav-label"><i className="bi bi-arrow-left"></i> Previous</span>
+            <span className="lesson-nav-label">
+              <i className="bi bi-arrow-left"></i> Previous
+            </span>
             <span className="lesson-nav-title">{prev.label}</span>
           </Link>
-        ) : <span />}
+        ) : (
+          <span />
+        )}
         {next ? (
           <Link to={next.to} className="lesson-nav-link next">
-            <span className="lesson-nav-label">Next <i className="bi bi-arrow-right"></i></span>
+            <span className="lesson-nav-label">
+              Next <i className="bi bi-arrow-right"></i>
+            </span>
             <span className="lesson-nav-title">{next.label}</span>
           </Link>
-        ) : <span />}
+        ) : (
+          <span />
+        )}
       </div>
     </section>
   );

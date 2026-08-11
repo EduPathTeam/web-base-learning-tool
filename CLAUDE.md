@@ -9,6 +9,7 @@ This file provides permanent, binding instructions for Claude Code when working 
 **Web-Base-LearningTool** is a browser-based learning platform for computer science students, focused on teaching data structures and algorithms (arrays, queues, etc.) through interactive lessons, quizzes, and progress tracking.
 
 **Business goals:**
+
 - Provide an accessible, self-paced way for students to learn core CS concepts.
 - Reinforce learning through quizzes and a code-testing area.
 - Track individual learning progress (lessons completed, quiz scores, streaks) to motivate continued use.
@@ -21,12 +22,14 @@ This file provides permanent, binding instructions for Claude Code when working 
 # Tech Stack
 
 **Current (implemented):**
+
 - HTML5, CSS3 (plain, no preprocessor, no framework like Tailwind/Bootstrap currently in use)
 - Vanilla JavaScript (ES6+), no frontend framework (no React/Vue/Angular)
 - Client-side persistence only: `localStorage` (via the `CSPlatform` module in `dashboard.js`)
 - No build tooling, no bundler, no package manager currently configured (no `package.json`)
 
 **Not yet present — do not assume these exist:**
+
 - No server runtime (Node/Express, Python/Flask/Django, PHP, etc.)
 - No database (SQL or NoSQL)
 - No ORM, no migrations
@@ -40,6 +43,7 @@ If a task requires backend/database capability, propose a stack choice to the us
 # Architecture Rules
 
 **Folder structure (current):**
+
 ```
 /pages/
   home-page/        index.html, script.js, style.css
@@ -55,6 +59,7 @@ README.md
 ```
 
 **Rules:**
+
 - Each page lives in its own folder under `/pages/` with matching `.html`, `.js`, `.css` files sharing the page's base name (e.g., `quiz.html` + `quiz.js` + `quiz.css`).
 - Keep folder naming consistent: lowercase, hyphenated, suffixed with `-page` (existing exception: `testCode-Page` uses different casing — do not propagate this inconsistency to new folders; use `test-code-page` style for anything new).
 - Do not nest a page's folder inside another unrelated page's folder (e.g., `about-page` currently lives inside `quiz-page/`, which is a pre-existing structural inconsistency — flag it if touched, but do not silently "fix" it without asking).
@@ -87,14 +92,14 @@ README.md
 - **SOLID (applied pragmatically to JS/future backend code):** single-responsibility functions/modules; prefer composition over deep inheritance; keep modules open to extension without needing to rewrite existing working code; depend on clear interfaces (e.g., the `CSPlatform` API) rather than reaching into internal implementation details of another module.
 - **Error handling:** never fail silently. User-facing actions (form submits, quiz submission, future API calls) must handle failure states and show the user clear feedback — no empty `catch` blocks, no swallowed promise rejections.
 - **Type safety:** since this is plain JS, be disciplined about expected shapes of data (validate function inputs, avoid implicit type coercion bugs). If the project later adopts TypeScript or JSDoc typing, follow that consistently once introduced — don't mix typed and untyped code without reason.
-- **Documentation requirements:** every new module/file should have a short header comment describing its purpose and public API (`dashboard.js`'s existing header comment is a good model). Inline comments should explain *why*, not *what*.
+- **Documentation requirements:** every new module/file should have a short header comment describing its purpose and public API (`dashboard.js`'s existing header comment is a good model). Inline comments should explain _why_, not _what_.
 - **Security requirements:** never trust client-side-only validation for anything security-sensitive; never hardcode secrets/API keys in frontend code; sanitize any user-generated content before rendering it into the DOM (avoid `innerHTML` with unsanitized input to prevent XSS).
 
 ---
 
 # Database Rules
 
-*(Applies once a database is introduced — none exists today.)*
+_(Applies once a database is introduced — none exists today.)_
 
 - **Schema conventions:** snake_case table and column names; every table has a primary key `id`; every table has `created_at`/`updated_at` timestamps unless there's a specific reason not to.
 - **Relationships:** use explicit foreign keys with clear naming (`user_id`, `quiz_id`, `lesson_id`); define cascade behavior deliberately (don't default to `CASCADE DELETE` without confirming it's safe).
@@ -146,6 +151,7 @@ README.md
 # Development Rules
 
 Claude must:
+
 - **Analyze before coding** — read relevant existing files and understand current patterns before writing new code.
 - **Explain major changes before implementation** — for anything beyond a small fix (new pages, new architecture, new dependencies, schema changes), briefly explain the approach and get confirmation before writing code.
 - **Avoid generating placeholder code** — no stub functions, no `TODO: implement later`, no fake `setTimeout`-simulated behavior presented as if it were real (the existing feedback-form fake-submit pattern is a known anti-pattern in this repo — do not replicate it in new code).
@@ -159,6 +165,7 @@ Claude must:
 # Response Style
 
 Claude should:
+
 - **Be concise** — avoid unnecessary preamble or repetition.
 - **Explain reasoning when necessary** — especially for architectural decisions, security-relevant choices, or when deviating from an existing pattern in the repo.
 - **Ask questions when requirements are ambiguous** — especially around backend/database stack choices, since none currently exists in this project.

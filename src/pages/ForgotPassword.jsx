@@ -41,12 +41,24 @@ export default function ForgotPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+        <Link to="/" className="auth-logo">
+          Edu<span>Path</span>
+        </Link>
         <h1 className="auth-title">Forgot Password?</h1>
-        <p className="auth-subtitle">Enter your email and we'll let you know how to reset your password.</p>
+        <p className="auth-subtitle">
+          Enter your email and we'll let you know how to reset your password.
+        </p>
 
-        {error && <div className="auth-error" role="alert">{error}</div>}
-        {notice && <div className="auth-success" role="status">{notice}</div>}
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
+        {notice && (
+          <div className="auth-success" role="status">
+            {notice}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="auth-field">

@@ -49,11 +49,17 @@ export default function SignUp() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+        <Link to="/" className="auth-logo">
+          Edu<span>Path</span>
+        </Link>
         <h1 className="auth-title">Create Account</h1>
         <p className="auth-subtitle">Sign up to save your lessons, quiz scores, and progress.</p>
 
-        {error && <div className="auth-error" role="alert">{error}</div>}
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="auth-field">

@@ -37,11 +37,17 @@ export default function SignIn() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+        <Link to="/" className="auth-logo">
+          Edu<span>Path</span>
+        </Link>
         <h1 className="auth-title">Sign In</h1>
         <p className="auth-subtitle">Welcome back — sign in to keep track of your progress.</p>
 
-        {error && <div className="auth-error" role="alert">{error}</div>}
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="auth-field">

@@ -27,7 +27,9 @@ export function AuthProvider({ children }) {
     const me = await apiPost('/auth/login', { email, password });
     setUser(me);
     setCurrentUser(me);
-    await syncFromServer().catch((err) => console.warn('Progress sync after login failed:', err.message));
+    await syncFromServer().catch((err) =>
+      console.warn('Progress sync after login failed:', err.message)
+    );
     return me;
   }, []);
 
@@ -57,7 +59,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, requestPasswordReset, resetPassword }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, logout, requestPasswordReset, resetPassword }}
+    >
       {children}
     </AuthContext.Provider>
   );

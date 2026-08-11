@@ -16,7 +16,8 @@
    in the box — flush against the bottom whether content is short or
    long — instead of floating above unstyled left-over body space.
    ========================================================================== */
-html, body {
+html,
+body {
   margin: 0;
 }
 

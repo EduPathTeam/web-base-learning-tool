@@ -45,6 +45,5 @@ export default function useLessonTimer(topicId) {
     };
     // Intentionally only re-runs if the topic changes (i.e. a different
     // lesson mounts) — not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicId]);
 }

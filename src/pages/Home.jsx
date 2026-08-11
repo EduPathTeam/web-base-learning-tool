@@ -38,7 +38,7 @@ function getVisibleIndices(current, n, count) {
   const before = Math.floor((shown - 1) / 2);
   const indices = [];
   for (let i = -before; i < shown - before; i++) {
-    indices.push(((current + i) % n + n) % n);
+    indices.push((((current + i) % n) + n) % n);
   }
   return indices;
 }
@@ -58,8 +58,12 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  function next() { setCurrent((c) => (c + 1) % COURSES.length); }
-  function prev() { setCurrent((c) => (c - 1 + COURSES.length) % COURSES.length); }
+  function next() {
+    setCurrent((c) => (c + 1) % COURSES.length);
+  }
+  function prev() {
+    setCurrent((c) => (c - 1 + COURSES.length) % COURSES.length);
+  }
 
   function resetAuto() {
     clearInterval(timerRef.current);
@@ -94,143 +98,231 @@ export default function Home() {
       <Header />
 
       <div className="page-shell-main">
-      <section className="hero">
-        <div className="container">
-          <div className="carousel-wrap">
-            <button className="nav-arrow" aria-label="Previous" onClick={() => { prev(); resetAuto(); }}><i className="bi bi-arrow-left"></i></button>
-            <div className="carousel-3d">
-              <div className="carousel-track">
-                {getVisibleIndices(current, COURSES.length, visibleCount).map((i) => {
-                  const c = COURSES[i];
-                  const isCentered = i === current;
-                  const label = c.to
-                    ? (isCentered ? `Go to ${c.title} lessons` : `Select ${c.title}`)
-                    : (isCentered ? `${c.title} — coming soon` : `Select ${c.title}`);
-                  return (
-                    <div
-                      key={c.title}
-                      className={`course-card${isCentered ? ' is-active' : ''}${isCentered && !c.to ? ' is-soon' : ''}`}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={label}
-                      title={isCentered && !c.to ? 'Coming soon' : undefined}
-                      onClick={() => handleCardActivate(c, i)}
-                      onKeyDown={(e) => handleCardKeyDown(e, c, i)}
-                    >
-                      <div className="icon-wrap" style={{ background: c.color }}><i className={`bi ${c.icon}`}></i></div>
-                      <div className="title">{c.title}</div>
-                      {isCentered && (
-                        <div className="card-cta">
-                          {c.to ? <span className="cta-ready"><i className="bi bi-arrow-right-circle-fill"></i> Start learning</span>
-                                : <span className="cta-soon">Coming soon</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <button className="nav-arrow" aria-label="Next" onClick={() => { next(); resetAuto(); }}><i className="bi bi-arrow-right"></i></button>
-          </div>
-          <div className="indicators">
-            {COURSES.map((c, i) => (
+        <section className="hero">
+          <div className="container">
+            <div className="carousel-wrap">
               <button
-                key={c.title}
-                className={`dot${i === current ? ' active' : ''}`}
-                aria-label={`Go to slide ${i + 1}`}
-                onClick={() => { setCurrent(i); resetAuto(); }}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="intro">
-        <div className="container">
-          <div className="row align-items-center g-5">
-            <div className="col-lg-6 fade-in">
-              <h1 className="intro-heading">Learn Core Computing Subjects<br />&amp; Discover Your <span className="highlight">Tech Path</span></h1>
-              <p className="intro-text">
-                Core computing subjects including data structures, databases, programming, and statistics while
-                discovering the right tech path for your future. Learn through interactive lessons designed to
-                build strong problem-solving and analytical skills.
-              </p>
-              <button className="btn-start" onClick={() => document.getElementById('features')?.scrollIntoView()}>
-                Start learning <i className="bi bi-arrow-right"></i>
+                className="nav-arrow"
+                aria-label="Previous"
+                onClick={() => {
+                  prev();
+                  resetAuto();
+                }}
+              >
+                <i className="bi bi-arrow-left"></i>
+              </button>
+              <div className="carousel-3d">
+                <div className="carousel-track">
+                  {getVisibleIndices(current, COURSES.length, visibleCount).map((i) => {
+                    const c = COURSES[i];
+                    const isCentered = i === current;
+                    const label = c.to
+                      ? isCentered
+                        ? `Go to ${c.title} lessons`
+                        : `Select ${c.title}`
+                      : isCentered
+                        ? `${c.title} — coming soon`
+                        : `Select ${c.title}`;
+                    return (
+                      <div
+                        key={c.title}
+                        className={`course-card${isCentered ? ' is-active' : ''}${isCentered && !c.to ? ' is-soon' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={label}
+                        title={isCentered && !c.to ? 'Coming soon' : undefined}
+                        onClick={() => handleCardActivate(c, i)}
+                        onKeyDown={(e) => handleCardKeyDown(e, c, i)}
+                      >
+                        <div className="icon-wrap" style={{ background: c.color }}>
+                          <i className={`bi ${c.icon}`}></i>
+                        </div>
+                        <div className="title">{c.title}</div>
+                        {isCentered && (
+                          <div className="card-cta">
+                            {c.to ? (
+                              <span className="cta-ready">
+                                <i className="bi bi-arrow-right-circle-fill"></i> Start learning
+                              </span>
+                            ) : (
+                              <span className="cta-soon">Coming soon</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <button
+                className="nav-arrow"
+                aria-label="Next"
+                onClick={() => {
+                  next();
+                  resetAuto();
+                }}
+              >
+                <i className="bi bi-arrow-right"></i>
               </button>
             </div>
-            <div className="col-lg-6 fade-in">
-              <div className="subject-grid">
-                <div className="subject-card sc-1"><i className="bi bi-hdd-stack"></i></div>
-                <div className="subject-card sc-2"><i className="bi bi-diagram-3"></i></div>
-                <div className="subject-card sc-3"><i className="bi bi-filetype-py"></i></div>
-                <div className="subject-card sc-4"><i className="bi bi-cup-hot"></i></div>
-              </div>
+            <div className="indicators">
+              {COURSES.map((c, i) => (
+                <button
+                  key={c.title}
+                  className={`dot${i === current ? ' active' : ''}`}
+                  aria-label={`Go to slide ${i + 1}`}
+                  onClick={() => {
+                    setCurrent(i);
+                    resetAuto();
+                  }}
+                />
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="quick-actions">
-        <div className="container">
-          <div className="row g-3 justify-content-center">
-            <div className="col-sm-4 fade-in">
-              <button className="qa-btn qa-1" onClick={() => navigate('/learn')}><i className="bi bi-journal-bookmark"></i> Browse Subjects</button>
-            </div>
-            <div className="col-sm-4 fade-in">
-              <button className="qa-btn qa-2" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}><i className="bi bi-signpost-split"></i> Explore Learning Paths</button>
-            </div>
-            <div className="col-sm-4 fade-in">
-              <button className="qa-btn qa-3" onClick={() => navigate('/dashboard')}><i className="bi bi-speedometer2"></i> Go to your dashboard</button>
+        <section className="intro">
+          <div className="container">
+            <div className="row align-items-center g-5">
+              <div className="col-lg-6 fade-in">
+                <h1 className="intro-heading">
+                  Learn Core Computing Subjects
+                  <br />
+                  &amp; Discover Your <span className="highlight">Tech Path</span>
+                </h1>
+                <p className="intro-text">
+                  Core computing subjects including data structures, databases, programming, and
+                  statistics while discovering the right tech path for your future. Learn through
+                  interactive lessons designed to build strong problem-solving and analytical
+                  skills.
+                </p>
+                <button
+                  className="btn-start"
+                  onClick={() => document.getElementById('features')?.scrollIntoView()}
+                >
+                  Start learning <i className="bi bi-arrow-right"></i>
+                </button>
+              </div>
+              <div className="col-lg-6 fade-in">
+                <div className="subject-grid">
+                  <div className="subject-card sc-1">
+                    <i className="bi bi-hdd-stack"></i>
+                  </div>
+                  <div className="subject-card sc-2">
+                    <i className="bi bi-diagram-3"></i>
+                  </div>
+                  <div className="subject-card sc-3">
+                    <i className="bi bi-filetype-py"></i>
+                  </div>
+                  <div className="subject-card sc-4">
+                    <i className="bi bi-cup-hot"></i>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="features" id="features">
-        <div className="container text-center">
-          <h2 className="fade-in">Everything You Need to Succeed</h2>
-          <p className="subtitle fade-in">Comprehensive tools and resources to learn computing subjects and plan your academic and professional journey.</p>
-          <div className="row g-4 mt-4">
-            <div className="col-md-4 fade-in">
-              <div className="feature-card fc-green">
-                <div className="f-icon" style={{ background: '#fff', color: '#2f9e5c' }}><i className="bi bi-diagram-3-fill"></i></div>
-                <h4>Learn DSA</h4>
-                <p>Master data structures and algorithms with interactive lessons and hands-on practice problems.</p>
-                <span className="fc-tag">01</span>
+        <section className="quick-actions">
+          <div className="container">
+            <div className="row g-3 justify-content-center">
+              <div className="col-sm-4 fade-in">
+                <button className="qa-btn qa-1" onClick={() => navigate('/learn')}>
+                  <i className="bi bi-journal-bookmark"></i> Browse Subjects
+                </button>
               </div>
-            </div>
-            <div className="col-md-4 fade-in">
-              <div className="feature-card fc-yellow">
-                <div className="f-icon" style={{ background: '#fff', color: '#c99a1e' }}><i className="bi bi-stars"></i></div>
-                <h4>Visualizers</h4>
-                <p>Watch algorithms come to life with step-by-step animated visualizations that build intuition.</p>
-                <span className="fc-tag">02</span>
+              <div className="col-sm-4 fade-in">
+                <button
+                  className="qa-btn qa-2"
+                  onClick={() =>
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })
+                  }
+                >
+                  <i className="bi bi-signpost-split"></i> Explore Learning Paths
+                </button>
               </div>
-            </div>
-            <div className="col-md-4 fade-in">
-              <div className="feature-card fc-pink">
-                <div className="f-icon" style={{ background: '#fff', color: '#c94b7c' }}><i className="bi bi-compass"></i></div>
-                <h4>Discover Your Major</h4>
-                <p>Take a personalized quiz to find out which IT major matches your strengths and interests.</p>
-                <span className="fc-tag">03</span>
+              <div className="col-sm-4 fade-in">
+                <button className="qa-btn qa-3" onClick={() => navigate('/dashboard')}>
+                  <i className="bi bi-speedometer2"></i> Go to your dashboard
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="cta-section">
-        <div className="container fade-in">
-          <h2>Ready to Start Your Journey?</h2>
-          <p>Start with our interactive lessons or jump straight to the visualizer to see algorithms in action.</p>
-          <div className="cta-buttons">
-            <button className="btn-outline-cta" onClick={() => navigate('/dashboard')}>View dashboard</button>
-            <div className="cta-divider"><span className="line"></span><i className="bi bi-arrow-right"></i><span className="line"></span></div>
-            <button className="btn-outline-cta" onClick={() => navigate('/learn')}>Explore major</button>
+        <section className="features" id="features">
+          <div className="container text-center">
+            <h2 className="fade-in">Everything You Need to Succeed</h2>
+            <p className="subtitle fade-in">
+              Comprehensive tools and resources to learn computing subjects and plan your academic
+              and professional journey.
+            </p>
+            <div className="row g-4 mt-4">
+              <div className="col-md-4 fade-in">
+                <div className="feature-card fc-green">
+                  <div className="f-icon" style={{ background: '#fff', color: '#2f9e5c' }}>
+                    <i className="bi bi-diagram-3-fill"></i>
+                  </div>
+                  <h4>Learn DSA</h4>
+                  <p>
+                    Master data structures and algorithms with interactive lessons and hands-on
+                    practice problems.
+                  </p>
+                  <span className="fc-tag">01</span>
+                </div>
+              </div>
+              <div className="col-md-4 fade-in">
+                <div className="feature-card fc-yellow">
+                  <div className="f-icon" style={{ background: '#fff', color: '#c99a1e' }}>
+                    <i className="bi bi-stars"></i>
+                  </div>
+                  <h4>Visualizers</h4>
+                  <p>
+                    Watch algorithms come to life with step-by-step animated visualizations that
+                    build intuition.
+                  </p>
+                  <span className="fc-tag">02</span>
+                </div>
+              </div>
+              <div className="col-md-4 fade-in">
+                <div className="feature-card fc-pink">
+                  <div className="f-icon" style={{ background: '#fff', color: '#c94b7c' }}>
+                    <i className="bi bi-compass"></i>
+                  </div>
+                  <h4>Discover Your Major</h4>
+                  <p>
+                    Take a personalized quiz to find out which IT major matches your strengths and
+                    interests.
+                  </p>
+                  <span className="fc-tag">03</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="cta-section">
+          <div className="container fade-in">
+            <h2>Ready to Start Your Journey?</h2>
+            <p>
+              Start with our interactive lessons or jump straight to the visualizer to see
+              algorithms in action.
+            </p>
+            <div className="cta-buttons">
+              <button className="btn-outline-cta" onClick={() => navigate('/dashboard')}>
+                View dashboard
+              </button>
+              <div className="cta-divider">
+                <span className="line"></span>
+                <i className="bi bi-arrow-right"></i>
+                <span className="line"></span>
+              </div>
+              <button className="btn-outline-cta" onClick={() => navigate('/learn')}>
+                Explore major
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <Footer />
