@@ -44,16 +44,20 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
   }, []);
 
-  // Returns the server's message (an honest "this isn't automated yet"
-  // notice — see server/src/routes/auth.js) rather than pretending an
-  // email was sent.
+  // Returns the server's message. The response is intentionally identical
+  // whether or not the email is registered (see server/src/routes/auth.js)
+  // so this can't be used to enumerate accounts.
   const requestPasswordReset = useCallback(async (email) => {
     const res = await apiPost('/auth/forgot-password', { email });
     return res.message;
   }, []);
 
+  const resetPassword = useCallback(async (token, password) => {
+    await apiPost('/auth/reset-password', { token, password });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, requestPasswordReset }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, requestPasswordReset, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

@@ -42,11 +42,11 @@ Status legend used throughout this report:
 | Styling | Plain CSS (per-page files in `src/styles/`), Bootstrap 5 + Bootstrap Icons (via CDN `<link>` in `index.html`) | Layout/utility classes + custom component CSS | ✅ COMPLETE |
 | Backend | Node.js + Express (`express` ^4.19.2) | REST API server in `server/src/` | ✅ COMPLETE (manually tested) |
 | Database | MySQL 8 (`mysql2` ^3.11.0, promise API) | Persistent storage for users, topics, lesson progress, quiz results, feedback | ✅ COMPLETE (connected and tested against a real local MySQL 8.0.46 instance) |
-| Authentication | `bcryptjs` (password hashing) + `express-session` + `express-mysql-session` (MySQL-backed session cookies) + `csrf-csrf` (CSRF protection) | Register/login/logout/`me`, session-gated API routes | 🟡 PARTIALLY COMPLETE (see §7 — session store and CSRF now production-grade; password reset/roles still outstanding) |
+| Authentication | `bcryptjs` (password hashing) + `express-session` + `express-mysql-session` (MySQL-backed session cookies) + `csrf-csrf` (CSRF protection) | Register/login/logout/`me`/forgot-password/reset-password, session-gated API routes | 🟡 PARTIALLY COMPLETE (see §7 — session store, CSRF, and password reset now production-grade; only role-based access is still outstanding) |
 | API communication | Native `fetch` via a custom wrapper (`src/lib/apiClient.js`) | Frontend → backend HTTP calls with `credentials: 'include'` | ✅ COMPLETE |
 | Environment config | `dotenv` (backend only) | `server/.env` (gitignored) holds DB credentials, session secret, port, CORS origin | ✅ COMPLETE |
 | Rate limiting | `express-rate-limit` ^8.6.2 | Applied to `/auth/register`, `/auth/login` (20 req/15min), `/feedback` (10 req/15min) | ✅ COMPLETE (verified — 21st login attempt in a window returns HTTP 429) |
-| Testing | Node's built-in test runner (`node:test`, `node:assert/strict`) — no added dependency | Frontend: `src/lib/csPlatform.test.js` (16 tests, pure logic). Backend: `server/test/api.test.js` (18 tests, real HTTP requests against the real Express app + local MySQL, including CSRF rejection) | ✅ COMPLETE (34/34 passing) |
+| Testing | Node's built-in test runner (`node:test`, `node:assert/strict`) — no added dependency | Frontend: `src/lib/csPlatform.test.js` (16 tests, pure logic). Backend: `server/test/api.test.js` (24 tests, real HTTP requests against the real Express app + local MySQL, including CSRF rejection and the full password-reset token lifecycle) | ✅ COMPLETE (40/40 passing) |
 | Linting | None found | No ESLint/Prettier config in either `package.json` | 🔴 NOT IMPLEMENTED |
 
 ---
@@ -204,7 +204,7 @@ All routes wrapped in `asyncHandler` so a thrown/rejected DB error is forwarded 
 
 ## 5.3 Not implemented on the backend
 
-- 🔴 No password reset / "forgot password" flow.
+- ~~No password reset / "forgot password" flow~~ — ✅ implemented, see §7.
 - 🔴 No email verification.
 - 🔴 No admin/moderation endpoints for viewing submitted feedback (feedback can only currently be inspected by querying MySQL directly).
 - ~~No rate limiting~~ — **fixed in the stabilization pass**, see §5.1.
@@ -248,7 +248,7 @@ Verified in this session via `curl` + direct MySQL queries:
 - A feedback submission was correctly inserted with a `NULL` `user_id` when unauthenticated.
 - Invalid login correctly returned 401 without creating a session.
 
-🟡 That initial verification was manual `curl`-based testing. **Since then, `server/test/api.test.js` automates all of the above (18 tests) and can be re-run at any time with `npm test` from `server/`** — it creates a uniquely-emailed test user and a tagged feedback row, exercises the flows above, and deletes both in an `after()` cleanup hook so it never leaves residue in the real database.
+🟡 That initial verification was manual `curl`-based testing. **Since then, `server/test/api.test.js` automates all of the above (24 tests) and can be re-run at any time with `npm test` from `server/`** — it creates uniquely-emailed test users and a tagged feedback row, exercises the flows above (including the full password-reset token lifecycle), and deletes everything it created in an `after()` cleanup hook so it never leaves residue in the real database.
 
 ---
 
@@ -262,7 +262,7 @@ Verified in this session via `curl` + direct MySQL queries:
 | Frontend session awareness | ✅ COMPLETE | `AuthContext.jsx` checks `/auth/me` on load, exposes `user`/`loading`/`login`/`register`/`logout` |
 | Guest mode | ✅ COMPLETE | The entire app functions without an account; `csPlatform.js` falls back to `localStorage` when `getCurrentUser()` is null |
 | Sign-out UX | ✅ COMPLETE | Wired in `Header.jsx`, calls `logout()` then navigates home; the underlying `/auth/logout` call is covered by an automated test. Not manually clicked through in a live browser — the button itself is ⚠️ NEEDS TESTING only in the browser-click sense, the API contract it relies on is verified. |
-| Password reset | 🔴 NOT IMPLEMENTED | No route, no UI |
+| Password reset | ✅ COMPLETE | Token-based flow: `POST /auth/forgot-password` generates a random 32-byte token, stores only its SHA-256 hash (`password_reset_tokens` table, migration `003_add_password_reset_tokens.sql`), and logs the reset link to the server console — clearly labeled as a **dev-only stand-in**, since no transactional email provider is configured (not wired up without explicit approval, per project decision). Token expires after 1 hour, is single-use (`used_at`), and any other outstanding token for the user is superseded/invalidated when a new one is requested or one is successfully used. `POST /auth/reset-password` validates the token and updates the password. Frontend: `ForgotPassword.jsx` (existing) + new `ResetPassword.jsx` at `/reset-password?token=...`. Tested: valid token succeeds and the new password can log in, expired token rejected, already-used token rejected, unknown token rejected, response is identical for registered/unregistered emails (6 new backend tests). |
 | Email verification | 🔴 NOT IMPLEMENTED | Not present |
 | Role-based authorization (student/admin) | 🔴 NOT IMPLEMENTED | `users` table has no role column; every authenticated user has identical access |
 | CSRF protection | ✅ COMPLETE | `csrf-csrf` (double-submit cookie pattern), applied globally to every non-GET request via `app.use(doubleCsrfProtection)`. Token issued from `GET /api/v1/csrf-token`; `apiClient.js` fetches and attaches it automatically. Required `saveUninitialized: true` on the session (see §5.1) so anonymous visitors get a stable session id for the token's HMAC to bind to. Tested: a request with a missing/invalid token gets 403 with `code: 'EBADCSRFTOKEN'`. |
@@ -335,7 +335,7 @@ Confirmed present in `Dashboard.jsx`:
 | Unit tests | ✅ COMPLETE — `src/lib/csPlatform.test.js`, 16 tests covering TOPICS shape, `markLessonComplete` (including the cap-at-total case and unknown-topic no-op), `recordQuizResult` (including score clamping), `computeAverageScore`, `computeTotals`, `computeRecommendedMajor` (both the null-until-a-quiz-is-taken case and the percent-clamped-to-60–98 case), `findContinueLearningUrl` (all 3 branches), `addLearningMinutes`, `computeTotalLearningHours`, `timeAgo`. Run with `npm test` from the project root. |
 | Integration tests | ✅ COMPLETE — `server/test/api.test.js`, 17 tests making real HTTP requests to the real Express app (in-process, ephemeral port) against the real local MySQL database: health check, session-required rejection, registration validation (bad email, short password, duplicate email), full register→session→`/me` flow, wrong-password rejection, login, lesson-complete (including unknown-topic → 404), quiz-result (including out-of-range → 400, no-session → 401), logout, anonymous feedback submission, feedback validation. Run with `npm test` from `server/`. Cleans up all rows it creates. |
 | End-to-end / browser tests | 🔴 NOT IMPLEMENTED — no Playwright/Cypress/similar; nothing clicks through the actual rendered UI in a real browser |
-| Automated test run (this session) | Both suites executed and passed: frontend 16/16, backend 18/18 (34/34 total) |
+| Automated test run (this session) | Both suites executed and passed: frontend 16/16, backend 24/24 (40/40 total) |
 | Manual testing performed (this session) | `npm run build` confirmed passing (twice — before and after the stabilization edits); a live curl-based run through register → lesson-complete → quiz-result → get-progress; a 25-request burst against `/auth/login` confirmed the new rate limiter returns 429 after the 20th attempt; all 19 frontend routes confirmed returning HTTP 200 |
 | Manual testing NOT performed | No click-through browser testing of the rendered UI (clicking buttons, watching animations, resizing for mobile) was performed — everything above is either an automated test or a scripted HTTP/build check, not a human clicking through the app in a browser |
 
@@ -373,12 +373,12 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 |---|---|---|---|
 | 1 | ~~Nothing committed to git — all Semester 2 work is uncommitted~~ | ~~High (risk of data loss)~~ | ✅ Fixed — committed to `main`, see §14 |
 | 2 | ~~Session store is in-memory (`express-session` default) — not production-viable~~ | ~~Medium~~ | ✅ Fixed — MySQL-backed via `express-mysql-session`, see §5.1 |
-| 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 34 tests across frontend + backend, see §13 |
+| 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 40 tests across frontend + backend, see §13 |
 | 4 | ~~No rate limiting on login/register/feedback endpoints~~ | ~~Medium (security)~~ | ✅ Fixed — see §5.1 |
 | 5 | ~~`addLearningMinutes()` exists but nothing calls it~~ | ~~Medium (functional gap)~~ | ✅ Fixed — see §8 |
 | 6 | ~~Dashboard's Time Distribution chart only supports 5 of 12 topics~~ | ~~Low~~ | ✅ Fixed — see §10 |
 | 7 | ~~Quiz hub's hash-link scrolling doesn't auto-scroll~~ | ~~Low~~ | ✅ Fixed — see §9 |
-| 8 | No password reset, email verification, or role-based access | Medium (feature gap) | 🔴 Still open — explicitly deferred, see §16 |
+| 8 | ~~No password reset~~; email verification and role-based access | Medium (feature gap) | Password reset ✅ fixed, see §7. Email verification and role-based access 🔴 still open — explicitly deferred pending scope decisions, see §16. |
 | 9 | Progress sync between server and localStorage is one-way-on-login only, not continuous | Low–Medium | 🔴 Still open — explicitly deferred, see §16 |
 | 10 | No admin interface to review feedback submissions | Low | 🔴 Still open — explicitly deferred, see §16 |
 | 11 | `POST /api/v1/progress/last-lesson` has no dedicated automated test | Low | ⚠️ Needs testing — see §5.2 |
@@ -394,7 +394,7 @@ The following are **not implemented** and are listed here only to separate them 
 - Continuous/bi-directional progress sync instead of one-way pull-on-login (§8).
 - ~~A production-grade session store~~ — done, see §5.1.
 - ~~CSRF protection~~ — done, see §7.
-- Password reset / email verification / role-based access.
+- ~~Password reset~~ — done, see §7. Email verification / role-based access still pending scope decisions.
 - An admin view for submitted feedback.
 - A dedicated automated test for `POST /api/v1/progress/last-lesson`.
 - End-to-end/browser tests (Playwright/Cypress) covering actual clicks through the rendered UI — everything verified so far is either an HTTP-level test or a build check, not a simulated user session in a browser.
@@ -412,10 +412,10 @@ The following are **not implemented** and are listed here only to separate them 
 | Dashboard (stats, charts, activity) | ✅ COMPLETE (learning-time data path fixed, chart covers all 12 topics) |
 | Backend REST API | ✅ COMPLETE (all routes tested except `last-lesson`, which is ⚠️ needs a dedicated test) |
 | MySQL database + schema | ✅ COMPLETE (tested) |
-| Authentication (register/login/session) | 🟡 PARTIALLY COMPLETE (functional and tested locally with a production-viable MySQL-backed session store and CSRF protection; still missing password reset and role-based access — see §7) |
+| Authentication (register/login/session/password reset) | 🟡 PARTIALLY COMPLETE (functional and tested locally with a production-viable MySQL-backed session store, CSRF protection, and a working password reset flow; only role-based access is still missing — see §7) |
 | Rate limiting | ✅ COMPLETE (auth + feedback endpoints) |
 | Feedback system | ✅ COMPLETE (tested) |
 | Frontend ↔ backend integration | ✅ COMPLETE (tested for core flows) |
-| Automated testing | ✅ COMPLETE (34 tests: 16 frontend unit, 18 backend integration, both passing) |
+| Automated testing | ✅ COMPLETE (40 tests: 16 frontend unit, 24 backend integration, both passing) |
 | Version control (commits) | ✅ COMPLETE — committed to `main`, tracked with `origin/main` (see §14) |
 | Database Systems / Java / Probability & Statistics | Out of scope by explicit decision — not gaps (§12) |

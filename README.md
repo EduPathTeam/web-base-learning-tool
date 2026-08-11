@@ -61,7 +61,7 @@ See `server/.env.example`. Never commit `server/.env` — it's gitignored.
 
 ## Known limitations
 
-See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL and every state-changing request is CSRF-protected (see below), but there's still no password reset/email verification and no admin role.
+See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, and password reset works (see below) — but there's still no email verification and no admin role.
 
 ### Sessions
 
@@ -72,6 +72,12 @@ Login sessions are stored in MySQL via `express-mysql-session` (table `sessions`
 Every `POST`/`PUT`/`PATCH`/`DELETE` request to the API must carry a valid `x-csrf-token` header (double-submit cookie pattern, via `csrf-csrf`). The frontend's `apiClient.js` handles this automatically — it fetches a token from `GET /api/v1/csrf-token` on the first mutating request and caches it, so existing call sites (`apiPost`, etc.) don't need any changes. If you're calling the API directly (curl, Postman, a new script), fetch a token from that endpoint first and send it back in both the `x-csrf-token` header and as the cookie the endpoint set.
 
 Requires `CSRF_SECRET` in `server/.env` (see `.env.example`) — a long random string, separate from `SESSION_SECRET` so the two mechanisms can be rotated independently.
+
+### Password reset
+
+`/forgot-password` → `POST /api/v1/auth/forgot-password` generates a random token, stores only its SHA-256 hash (`password_reset_tokens` table), and — **because no transactional email provider is configured yet** — logs the reset link to the **server console only**, clearly labeled `[DEV ONLY — no email provider configured]`. Copy that link from the terminal running `server`'s `npm run dev`/`npm start` to test the flow locally. Tokens expire after 1 hour and can only be used once. `/reset-password?token=...` (the link's destination) collects a new password and submits it to `POST /api/v1/auth/reset-password`.
+
+This is a deliberate interim state, not an oversight — wiring up a real email provider (e.g. SendGrid/Postmark/SES) is a separate decision requiring its own sign-off before being added.
 
 ### Production deployment note
 

@@ -8,6 +8,7 @@ import QuizPage from './pages/QuizPage';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import About from './pages/About';
 import Feedback from './pages/Feedback';
 import ArrayLesson from './pages/lessons/ArrayLesson';
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/sign-up" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/feedback" element={<Feedback />} />
       <Route path="*" element={<ComingSoon title="Page not found" />} />
     </Routes>

@@ -111,6 +111,7 @@ export function createApp() {
   app.use('/api/v1/auth/register', authLimiter);
   app.use('/api/v1/auth/login', authLimiter);
   app.use('/api/v1/auth/forgot-password', authLimiter);
+  app.use('/api/v1/auth/reset-password', authLimiter);
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/progress', progressRouter);
   app.use('/api/v1/feedback', feedbackLimiter, feedbackRouter);

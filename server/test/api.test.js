@@ -7,6 +7,7 @@
 // Run with: npm test  (from server/)
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 
@@ -15,6 +16,13 @@ let server;
 let baseUrl;
 const testEmail = `test-${Date.now()}@example.com`;
 const testPassword = 'password123';
+const resetEmail = `reset-test-${Date.now()}@example.com`;
+const resetPassword = 'password123';
+let resetUserId;
+
+function hashResetToken(rawToken) {
+  return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
 
 function extractCookie(res) {
   const raw = res.headers.get('set-cookie');
@@ -77,10 +85,30 @@ before(async () => {
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://localhost:${server.address().port}`;
   await fetchCsrfToken();
+
+  // Dedicated user for the password-reset test group below, registered
+  // with its own isolated session/CSRF pairing so it doesn't touch the
+  // shared anonymous session that the early "without a session" tests
+  // depend on.
+  const setupTokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const setupCookie = [extractCookieNamed(setupTokenRes, 'connect.sid'), extractCookieNamed(setupTokenRes, 'csrf-token')]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: setupToken } = await setupTokenRes.json();
+  const setupRes = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: setupCookie, 'x-csrf-token': setupToken },
+    body: JSON.stringify({ email: resetEmail, password: resetPassword, displayName: 'Reset Test' }),
+  });
+  const setupData = await setupRes.json();
+  resetUserId = setupData.id;
 });
 
 after(async () => {
   await pool.query('DELETE FROM users WHERE email = ?', [testEmail]);
+  // password_reset_tokens rows for this user are removed via ON DELETE
+  // CASCADE (see migration 003_add_password_reset_tokens.sql).
+  await pool.query('DELETE FROM users WHERE email = ?', [resetEmail]);
   await pool.query('DELETE FROM feedback WHERE email = ?', ['test-feedback@example.com']);
   // Stops the session store's periodic expired-session cleanup interval —
   // without this, node --test hangs after the suite finishes because the
@@ -281,4 +309,87 @@ test('POST /api/v1/feedback rejects a missing message', async () => {
   });
   assert.equal(status, 400);
   assert.match(data.error, /message/i);
+});
+
+test('POST /api/v1/auth/forgot-password responds identically for a registered and an unregistered email', async () => {
+  await fetchCsrfToken();
+  const { status, data } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'definitely-not-registered@example.com' },
+  });
+  assert.equal(status, 200);
+  assert.match(data.message, /reset link has been sent/i);
+});
+
+test('POST /api/v1/auth/forgot-password creates a reset token for a registered email', async () => {
+  const { status } = await api('/api/v1/auth/forgot-password', { method: 'POST', body: { email: resetEmail } });
+  assert.equal(status, 200);
+
+  const [rows] = await pool.query(
+    'SELECT id FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL',
+    [resetUserId]
+  );
+  assert.ok(rows.length >= 1, 'expected a reset token row to be created');
+});
+
+test('POST /api/v1/auth/reset-password succeeds with a valid token and the new password can log in', async () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  await pool.query('INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)', [
+    resetUserId,
+    hashResetToken(rawToken),
+    new Date(Date.now() + 60 * 60 * 1000),
+  ]);
+
+  const { status } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: rawToken, password: 'newPassword456' },
+  });
+  assert.equal(status, 204);
+
+  const { status: loginStatus, data: loginData } = await api('/api/v1/auth/login', {
+    method: 'POST',
+    body: { email: resetEmail, password: 'newPassword456' },
+  });
+  assert.equal(loginStatus, 200);
+  assert.equal(loginData.email, resetEmail);
+});
+
+test('POST /api/v1/auth/reset-password rejects an expired token', async () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  await pool.query('INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)', [
+    resetUserId,
+    hashResetToken(rawToken),
+    new Date(Date.now() - 60 * 1000),
+  ]);
+
+  const { status, data } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: rawToken, password: 'anotherPassword789' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /invalid or has expired/i);
+});
+
+test('POST /api/v1/auth/reset-password rejects an already-used token', async () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used_at) VALUES (?, ?, ?, NOW())',
+    [resetUserId, hashResetToken(rawToken), new Date(Date.now() + 60 * 60 * 1000)]
+  );
+
+  const { status, data } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: rawToken, password: 'anotherPassword789' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /invalid or has expired/i);
+});
+
+test('POST /api/v1/auth/reset-password rejects an unknown token', async () => {
+  const { status, data } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: 'not-a-real-token', password: 'anotherPassword789' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /invalid or has expired/i);
 });

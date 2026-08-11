@@ -6,9 +6,9 @@ import '../styles/auth.css';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Calls the real /auth/forgot-password endpoint and shows exactly what it
-// says. This project has no email provider configured, so that endpoint
-// (and this page) are honest about it instead of faking a "check your
-// inbox" success message — see server/src/routes/auth.js.
+// says. There's no email provider configured yet, so the actual reset
+// link is only logged to the server console (dev-only stand-in) rather
+// than emailed — see server/src/routes/auth.js and README.md.
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
