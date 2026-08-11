@@ -61,8 +61,14 @@ See `server/.env.example`. Never commit `server/.env` — it's gitignored.
 
 ## Known limitations
 
-See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL (see below), but there's still no CSRF protection, no password reset/email verification, and no admin role.
+See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL and every state-changing request is CSRF-protected (see below), but there's still no password reset/email verification and no admin role.
 
 ### Sessions
 
 Login sessions are stored in MySQL via `express-mysql-session` (table `sessions`, created by `server/migrations/002_add_sessions_table.sql` — run `npm run migrate` after pulling this change). This replaced `express-session`'s default in-memory store, which loses all sessions on every server restart and isn't safe under concurrent load. No new environment variables are needed — the session store reuses the same `DB_*` credentials and connection pool as the rest of the app.
+
+### CSRF protection
+
+Every `POST`/`PUT`/`PATCH`/`DELETE` request to the API must carry a valid `x-csrf-token` header (double-submit cookie pattern, via `csrf-csrf`). The frontend's `apiClient.js` handles this automatically — it fetches a token from `GET /api/v1/csrf-token` on the first mutating request and caches it, so existing call sites (`apiPost`, etc.) don't need any changes. If you're calling the API directly (curl, Postman, a new script), fetch a token from that endpoint first and send it back in both the `x-csrf-token` header and as the cookie the endpoint set.
+
+Requires `CSRF_SECRET` in `server/.env` (see `.env.example`) — a long random string, separate from `SESSION_SECRET` so the two mechanisms can be rotated independently.

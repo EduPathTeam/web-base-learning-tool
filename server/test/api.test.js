@@ -22,12 +22,47 @@ function extractCookie(res) {
   return raw.split(';')[0];
 }
 
-async function api(path, { method = 'GET', body, cookie } = {}) {
+// Node's fetch Headers.get('set-cookie') collapses multiple Set-Cookie
+// headers into one (per the Fetch spec), which breaks whenever a single
+// response sets more than one cookie — as /csrf-token now does, since
+// saveUninitialized:true means it also sets the session cookie. Use
+// getSetCookie() (Node 18.14+/undici) to read the named one directly.
+function extractCookieNamed(res, name) {
+  const all = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+  const match = all.find((c) => c.startsWith(`${name}=`));
+  return match ? match.split(';')[0] : null;
+}
+
+// Every state-changing route now requires an x-csrf-token header matching
+// the double-submit cookie (server/src/app.js), and that cookie's HMAC is
+// bound to the *session id* that was active when the token was issued —
+// so the same session cookie has to travel alongside it on every request,
+// exactly like a real browser does automatically via credentials:
+// 'include'. `sessionCookie` starts as the anonymous session established
+// by the initial csrf-token fetch and is reassigned after register/login
+// (see below); api() sends whichever value it currently holds unless a
+// call explicitly overrides it.
+let csrfCookie;
+let csrfToken;
+let sessionCookie;
+
+async function fetchCsrfToken() {
+  const res = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  csrfCookie = extractCookieNamed(res, 'csrf-token');
+  sessionCookie = extractCookieNamed(res, 'connect.sid');
+  const data = await res.json();
+  csrfToken = data.csrfToken;
+}
+
+async function api(path, { method = 'GET', body, cookie, omitCsrf = false } = {}) {
+  const effectiveCookie = cookie !== undefined ? cookie : sessionCookie;
+  const cookieHeader = [effectiveCookie, !omitCsrf ? csrfCookie : null].filter(Boolean).join('; ');
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(cookie ? { Cookie: cookie } : {}),
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      ...(method !== 'GET' && !omitCsrf ? { 'x-csrf-token': csrfToken } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -41,6 +76,7 @@ before(async () => {
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://localhost:${server.address().port}`;
+  await fetchCsrfToken();
 });
 
 after(async () => {
@@ -58,6 +94,16 @@ test('GET /api/v1/health returns ok', async () => {
   const { status, data } = await api('/api/v1/health');
   assert.equal(status, 200);
   assert.deepEqual(data, { ok: true });
+});
+
+test('POST without a valid CSRF token is rejected', async () => {
+  const { status, data } = await api('/api/v1/auth/register', {
+    method: 'POST',
+    body: { email: 'csrf-rejection-test@example.com', password: testPassword, displayName: 'CSRF Test' },
+    omitCsrf: true,
+  });
+  assert.equal(status, 403);
+  assert.equal(data.code, 'EBADCSRFTOKEN');
 });
 
 test('GET /api/v1/progress without a session is rejected', async () => {
@@ -83,8 +129,6 @@ test('POST /api/v1/auth/register rejects a short password', async () => {
   assert.equal(status, 400);
   assert.match(data.error, /password/i);
 });
-
-let sessionCookie;
 
 test('POST /api/v1/auth/register creates an account and starts a session', async () => {
   const { status, data, cookie } = await api('/api/v1/auth/register', {
@@ -123,6 +167,11 @@ test('POST /api/v1/auth/login rejects a wrong password', async () => {
 });
 
 test('POST /api/v1/auth/login succeeds with the correct password', async () => {
+  // Refresh to a fresh anonymous session first — the shared sessionCookie
+  // is already authenticated at this point (from the register test above),
+  // so logging in again would be a no-op mutation and express-session
+  // wouldn't re-send Set-Cookie, defeating the assertion below.
+  await fetchCsrfToken();
   const { status, data, cookie } = await api('/api/v1/auth/login', {
     method: 'POST',
     body: { email: testEmail, password: testPassword },
@@ -178,11 +227,23 @@ test('POST /api/v1/progress/quiz-result rejects an out-of-range score', async ()
 });
 
 test('POST /api/v1/progress/quiz-result without a session is rejected', async () => {
-  const { status } = await api('/api/v1/progress/quiz-result', {
+  // Needs its own fresh anonymous session + CSRF pairing rather than the
+  // shared one above, which is authenticated by this point in the suite —
+  // sending the shared pair here would pass requireAuth and defeat the
+  // test. A brand-new pairing has no userId attached, so it still clears
+  // CSRF validation but correctly fails the auth check.
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const freshCookie = [extractCookieNamed(tokenRes, 'connect.sid'), extractCookieNamed(tokenRes, 'csrf-token')]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: freshToken } = await tokenRes.json();
+
+  const res = await fetch(`${baseUrl}/api/v1/progress/quiz-result`, {
     method: 'POST',
-    body: { topicId: 'arrays', score: 50 },
+    headers: { 'Content-Type': 'application/json', Cookie: freshCookie, 'x-csrf-token': freshToken },
+    body: JSON.stringify({ topicId: 'arrays', score: 50 }),
   });
-  assert.equal(status, 401);
+  assert.equal(res.status, 401);
 });
 
 test('POST /api/v1/auth/logout ends the session', async () => {
@@ -194,6 +255,11 @@ test('POST /api/v1/auth/logout ends the session', async () => {
 });
 
 test('POST /api/v1/feedback accepts an anonymous submission', async () => {
+  // sessionCookie is stale after logout (destroyed server-side, so
+  // reusing it makes express-session mint a different session id than
+  // the one the shared CSRF token is bound to). Refresh to a fresh
+  // anonymous pairing first.
+  await fetchCsrfToken();
   const { status, data } = await api('/api/v1/feedback', {
     method: 'POST',
     body: {

@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
+import { doubleCsrf } from 'csrf-csrf';
 import rateLimit from 'express-rate-limit';
 import { pool } from './db/pool.js';
 import { authRouter } from './routes/auth.js';
@@ -9,6 +11,7 @@ import { progressRouter } from './routes/progress.js';
 import { feedbackRouter } from './routes/feedback.js';
 
 const MySQLStore = MySQLStoreFactory(session);
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Express app configuration, separated from src/index.js's app.listen()
 // call so tests (server/test/*.test.js) can import and exercise the app
@@ -18,6 +21,9 @@ export function createApp() {
 
   app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
   app.use(express.json());
+  // csrf-csrf reads the CSRF cookie via req.cookies, which only exists
+  // once cookie-parser has run.
+  app.use(cookieParser());
 
   // Reuses the shared connection pool (db/pool.js) instead of opening a
   // second one. createDatabaseTable is false because the `sessions` table
@@ -37,13 +43,48 @@ export function createApp() {
       store: sessionStore,
       secret: process.env.SESSION_SECRET,
       resave: false,
-      saveUninitialized: false,
+      // Must be true (not the previous false) so that every visitor —
+      // including ones who never log in — gets a stable session id from
+      // their very first request. CSRF protection below binds each token
+      // to req.session.id; with saveUninitialized:false, no session
+      // cookie is ever sent to an anonymous visitor, so express-session
+      // would mint a brand-new id on every request and CSRF validation
+      // would always fail for register/login/anonymous feedback.
+      saveUninitialized: true,
       cookie: {
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       },
     })
   );
+
+  // CSRF protection (double-submit cookie pattern) for every state-changing
+  // request. csrf-csrf (actively maintained) was chosen over the archived
+  // `csurf` package. The client fetches a token from GET /csrf-token (see
+  // below — reads are exempt from protection by default) and echoes it
+  // back in an `x-csrf-token` header on POST/PUT/PATCH/DELETE requests;
+  // apiClient.js does this automatically so existing call sites don't
+  // need to change individually.
+  const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
+    getSecret: () => process.env.CSRF_SECRET,
+    getSessionIdentifier: (req) => req.session.id,
+    cookieName: 'csrf-token',
+    cookieOptions: {
+      sameSite: 'lax',
+      secure: isProduction,
+      httpOnly: true,
+    },
+    errorConfig: {
+      message: 'Invalid or missing CSRF token. Please refresh the page and try again.',
+    },
+  });
+  app.locals.generateCsrfToken = generateCsrfToken;
+
+  app.get('/api/v1/csrf-token', (req, res) => {
+    res.json({ csrfToken: generateCsrfToken(req, res) });
+  });
+
+  app.use(doubleCsrfProtection);
 
   // CLAUDE.md's security rules call for rate limiting on public-facing
   // endpoints like login, registration, and feedback submission — this
@@ -74,9 +115,15 @@ export function createApp() {
   app.use('/api/v1/feedback', feedbackLimiter, feedbackRouter);
 
   // Centralized error handler so a thrown/rejected error in any route
-  // returns a clean JSON 500 instead of leaking a stack trace or hanging.
+  // returns a clean JSON response instead of leaking a stack trace or
+  // hanging. Known 4xx errors (e.g. csrf-csrf's invalidCsrfTokenError)
+  // carry their own status and a message that's safe to expose; anything
+  // else is treated as unexpected and collapsed to a generic 500.
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
+    if (err.status && err.status < 500) {
+      return res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
+    }
     console.error(err);
     res.status(500).json({ error: 'Internal server error.' });
   });
