@@ -4,6 +4,7 @@ import Chart from 'chart.js/auto';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useScrollReveal from '../hooks/useScrollReveal';
+import useProgressSync from '../hooks/useProgressSync';
 import { useAuth } from '../context/AuthContext';
 import {
   TOPICS,
@@ -59,6 +60,12 @@ export default function Dashboard() {
     saveData(d);
     setData(d);
   }, []);
+
+  // Re-pulls server progress on mount and on tab-focus-regained (see
+  // useProgressSync.js) and refreshes this page's state once the merge
+  // lands, so a second device's progress shows up without a full
+  // sign-out/sign-in. No-ops for guests (no signed-in user to sync).
+  useProgressSync(() => setData(getData()));
 
   useScrollReveal([data]);
 

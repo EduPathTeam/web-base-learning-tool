@@ -240,26 +240,48 @@ export function setLastLesson(topicId, url) {
   return data;
 }
 
-// Pulls the signed-in user's saved progress down from the server and
-// merges it into the local (localStorage) copy — called right after
-// login/register so the dashboard reflects the account's real history
-// instead of whatever this browser happened to have locally.
-export async function syncFromServer() {
-  if (!getCurrentUser()) return;
-
-  const server = await apiGet('/progress');
-  const data = getData();
-
+// Pure merge step, split out from syncFromServer() so it can be unit
+// tested without touching the network or localStorage (see
+// csPlatform.test.js). Mutates and returns `data`.
+//
+// Lesson counts merge with Math.max — safe and monotonic either way.
+// Quiz results are only adopted from the server when its array is at
+// least as long as the local one. quiz_results is an append-only log
+// server-side, so once the server has caught up its array is a superset
+// of the local one; but recordQuizResult()'s write to the server is
+// fire-and-forget, so a just-taken local attempt can still be ahead of
+// what the server has recorded. Overwriting local with a shorter server
+// array in that window would silently drop that attempt.
+export function mergeServerProgress(data, server) {
   TOPICS.forEach((t) => {
     const serverCount = server.completedLessons[t.id] || 0;
     data.completedLessons[t.id] = Math.max(data.completedLessons[t.id] || 0, serverCount);
   });
 
   Object.entries(server.quizResults).forEach(([topicId, scores]) => {
-    data.quizResults[topicId] = scores;
+    const localScores = data.quizResults[topicId] || [];
+    if (scores.length >= localScores.length) {
+      data.quizResults[topicId] = scores;
+    }
   });
 
   data.recommendedMajor = computeRecommendedMajor(data);
+  return data;
+}
+
+// Pulls the signed-in user's saved progress down from the server and
+// merges it into the local (localStorage) copy. Called right after
+// login/register, and — via useProgressSync.js — on Dashboard mount and
+// whenever the tab regains focus, so a second device's progress shows up
+// without requiring a full sign-out/sign-in. There's still no push from
+// the server: a change on another device only appears here the next time
+// one of those trigger points fires on this one.
+export async function syncFromServer() {
+  if (!getCurrentUser()) return;
+
+  const server = await apiGet('/progress');
+  const data = getData();
+  mergeServerProgress(data, server);
   saveData(data);
   return data;
 }

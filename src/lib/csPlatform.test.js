@@ -155,3 +155,46 @@ test('timeAgo formats recent timestamps as human-readable strings', () => {
   assert.equal(csPlatform.timeAgo(Date.now()), 'Just now');
   assert.equal(csPlatform.timeAgo(Date.now() - 5 * 60000), '5 min ago');
 });
+
+test('mergeServerProgress takes the higher lesson count either direction', () => {
+  const data = freshData();
+  data.completedLessons.arrays = 3;
+  data.completedLessons.trees = 7;
+  const server = {
+    completedLessons: { arrays: 5, trees: 2 },
+    quizResults: {},
+  };
+  csPlatform.mergeServerProgress(data, server);
+  assert.equal(data.completedLessons.arrays, 5, 'server is ahead, should win');
+  assert.equal(data.completedLessons.trees, 7, 'local is ahead, should be kept');
+});
+
+test('mergeServerProgress adopts server quiz results once the server has caught up', () => {
+  const data = freshData();
+  data.quizResults.arrays = [80];
+  const server = { completedLessons: {}, quizResults: { arrays: [80, 95] } };
+  csPlatform.mergeServerProgress(data, server);
+  assert.deepEqual(data.quizResults.arrays, [80, 95]);
+});
+
+test('mergeServerProgress keeps a just-taken local quiz attempt the server has not recorded yet', () => {
+  const data = freshData();
+  // Simulates a fire-and-forget recordQuizResult() write still in flight:
+  // this attempt exists locally but the server's copy hasn't caught up.
+  data.quizResults.arrays = [80, 95, 70];
+  const server = { completedLessons: {}, quizResults: { arrays: [80, 95] } };
+  csPlatform.mergeServerProgress(data, server);
+  assert.deepEqual(
+    data.quizResults.arrays,
+    [80, 95, 70],
+    'a shorter server array must not silently drop the newer local attempt'
+  );
+});
+
+test('mergeServerProgress leaves a topic untouched when the server has no results for it', () => {
+  const data = freshData();
+  data.quizResults.queues = [60];
+  const server = { completedLessons: {}, quizResults: {} };
+  csPlatform.mergeServerProgress(data, server);
+  assert.deepEqual(data.quizResults.queues, [60]);
+});

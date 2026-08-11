@@ -10,7 +10,7 @@ A DSA (Data Structures & Algorithms) learning platform: 12 interactive lessons, 
     components/     Header, Footer, shared lesson components (quiz, visualizers, ...)
     pages/          Home, Learn, Dashboard, Quiz, Sign In, About, Feedback, lessons/*
     lib/            csPlatform.js (progress store), apiClient.js, authState.js
-    hooks/          useScrollReveal.js, useLessonTimer.js
+    hooks/          useScrollReveal.js, useLessonTimer.js, useProgressSync.js
     context/        AuthContext.jsx
     styles/         per-page CSS
 server/             Node + Express + MySQL API
@@ -89,6 +89,10 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
 Non-admins (including signed-out visitors) get a 403/401-style message if they visit `/admin/feedback` directly; the page isn't linked from the main nav.
+
+### Progress sync across devices
+
+Signed-in progress syncs server → local on login/register, on visiting the Dashboard, and whenever the browser tab regains focus (`src/hooks/useProgressSync.js`) — so switching between two devices (or two tabs) shows up without a full sign-out/sign-in. This is still one-way (server → local) and trigger-based, not a live push: a change made on another device appears here the next time one of those triggers fires on this one, not instantly. Full push-based sync (e.g. a websocket) was considered and explicitly ruled out as unwarranted for a single-user, non-collaborative learning tool.
 
 ### Production deployment note
 

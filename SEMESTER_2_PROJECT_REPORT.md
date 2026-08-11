@@ -46,7 +46,7 @@ Status legend used throughout this report:
 | API communication | Native `fetch` via a custom wrapper (`src/lib/apiClient.js`) | Frontend → backend HTTP calls with `credentials: 'include'` | ✅ COMPLETE |
 | Environment config | `dotenv` (backend only) | `server/.env` (gitignored) holds DB credentials, session secret, port, CORS origin | ✅ COMPLETE |
 | Rate limiting | `express-rate-limit` ^8.6.2 | Applied to `/auth/register`, `/auth/login` (20 req/15min), `/feedback` (10 req/15min) | ✅ COMPLETE (verified — 21st login attempt in a window returns HTTP 429) |
-| Testing | Node's built-in test runner (`node:test`, `node:assert/strict`) — no added dependency | Frontend: `src/lib/csPlatform.test.js` (16 tests, pure logic). Backend: `server/test/api.test.js` (27 tests, real HTTP requests against the real Express app + local MySQL, including CSRF rejection, the full password-reset token lifecycle, and admin-only feedback access) | ✅ COMPLETE (43/43 passing) |
+| Testing | Node's built-in test runner (`node:test`, `node:assert/strict`) — no added dependency | Frontend: `src/lib/csPlatform.test.js` (20 tests, pure logic, including `mergeServerProgress`'s quiz-results fix). Backend: `server/test/api.test.js` (27 tests, real HTTP requests against the real Express app + local MySQL, including CSRF rejection, the full password-reset token lifecycle, and admin-only feedback access) | ✅ COMPLETE (47/47 passing) |
 | Linting | None found | No ESLint/Prettier config in either `package.json` | 🔴 NOT IMPLEMENTED |
 
 ---
@@ -276,8 +276,9 @@ Verified in this session via `curl` + direct MySQL queries:
 # 8. Learning Progress System
 
 - **Source of truth (guest):** `localStorage` key `csPlatformData_v2`, read/written exclusively through `src/lib/csPlatform.js`.
-- **Source of truth (signed-in):** Same `localStorage` object, kept in sync with MySQL via fire-and-forget API calls on every mutation (`markLessonComplete`, `recordQuizResult`, `setLastLesson`), plus a one-time pull (`syncFromServer()`) executed right after login/register and on initial page load if already signed in.
-- **Sync direction:** Confirmed by reading the code — sync is **one-way merge on login only** (server → local, taking the max of local/server lesson counts). There is no continuous two-way sync or conflict resolution beyond that single merge point. If a user is signed in on two different browsers, progress made in one will not appear in the other until that browser's next login/page load, and even then only via the `Math.max()` merge — it does not re-pull after that.
+- **Source of truth (signed-in):** Same `localStorage` object, kept in sync with MySQL via fire-and-forget API calls on every mutation (`markLessonComplete`, `recordQuizResult`, `setLastLesson`), plus pulls (`syncFromServer()`) executed right after login/register, on initial page load if already signed in, and — ✅ **fixed in the production-readiness pass** — on Dashboard mount and whenever the browser tab regains focus (`src/hooks/useProgressSync.js`, same Page Visibility idiom as `useLessonTimer.js`), so a second device's progress shows up without requiring a full sign-out/sign-in.
+- **Sync direction:** Still one-way, server → local, and still not truly continuous — there's no push from the server, so a change made on another device only appears here the next time one of the trigger points above fires on this one (previously only login did). This is a deliberate choice, not a gap: full push-based sync (e.g. a websocket) was evaluated and explicitly rejected as over-engineering for a single-user, non-collaborative learning tool — see the tradeoffs discussion that preceded this fix. Lesson counts merge with `Math.max()` (local/server, whichever is higher).
+- **Quiz-results merge bug fixed alongside this:** the pre-existing merge logic unconditionally overwrote local quiz results with the server's array per topic. Since `recordQuizResult()`'s write to the server is fire-and-forget, a just-taken local quiz attempt that hadn't reached the server yet could be silently dropped by an older, shorter server array — a narrow window before this fix (only reachable right after login), made more likely to matter once sync happens more often. `mergeServerProgress()` (extracted as a pure, unit-tested function in `csPlatform.js`) now only adopts the server's array for a topic once it's at least as long as the local one.
 - **Derived stats implemented:** total lessons completed, average quiz score, day streak (`computeStreak`, consecutive days in `activeDates`), total learning hours, "recommended major" heuristic (weighted completion % + quiz average across 3 fixed majors), "continue learning" URL resolution. All covered by automated tests in `csPlatform.test.js`.
 - ✅ **Fixed in the stabilization pass:** `addLearningMinutes()` is now called by a new hook, `src/hooks/useLessonTimer.js`, wired into `LessonProgressBar.jsx` (rendered on every lesson page). It accumulates visible time-on-page (paused while the browser tab is hidden, via the Page Visibility API) and logs it when the student navigates away. Verified by code review and by the existing `addLearningMinutes`/`computeTotalLearningHours` unit tests — **not** verified by sitting on a lesson page in a live browser and watching the Dashboard update in real time, since that requires manual interaction outside this session's tooling.
 
@@ -336,10 +337,10 @@ Confirmed present in `Dashboard.jsx`:
 
 | Type | Status |
 |---|---|
-| Unit tests | ✅ COMPLETE — `src/lib/csPlatform.test.js`, 16 tests covering TOPICS shape, `markLessonComplete` (including the cap-at-total case and unknown-topic no-op), `recordQuizResult` (including score clamping), `computeAverageScore`, `computeTotals`, `computeRecommendedMajor` (both the null-until-a-quiz-is-taken case and the percent-clamped-to-60–98 case), `findContinueLearningUrl` (all 3 branches), `addLearningMinutes`, `computeTotalLearningHours`, `timeAgo`. Run with `npm test` from the project root. |
+| Unit tests | ✅ COMPLETE — `src/lib/csPlatform.test.js`, 20 tests covering TOPICS shape, `markLessonComplete` (including the cap-at-total case and unknown-topic no-op), `recordQuizResult` (including score clamping), `computeAverageScore`, `computeTotals`, `computeRecommendedMajor` (both the null-until-a-quiz-is-taken case and the percent-clamped-to-60–98 case), `findContinueLearningUrl` (all 3 branches), `addLearningMinutes`, `computeTotalLearningHours`, `timeAgo`, and `mergeServerProgress` (lesson-count merge direction, quiz-results adopted once the server catches up, a newer local attempt preserved when the server hasn't, an untouched topic left alone). Run with `npm test` from the project root. |
 | Integration tests | ✅ COMPLETE — `server/test/api.test.js`, 17 tests making real HTTP requests to the real Express app (in-process, ephemeral port) against the real local MySQL database: health check, session-required rejection, registration validation (bad email, short password, duplicate email), full register→session→`/me` flow, wrong-password rejection, login, lesson-complete (including unknown-topic → 404), quiz-result (including out-of-range → 400, no-session → 401), logout, anonymous feedback submission, feedback validation. Run with `npm test` from `server/`. Cleans up all rows it creates. |
 | End-to-end / browser tests | 🔴 NOT IMPLEMENTED — no Playwright/Cypress/similar; nothing clicks through the actual rendered UI in a real browser |
-| Automated test run (this session) | Both suites executed and passed: frontend 16/16, backend 27/27 (43/43 total) |
+| Automated test run (this session) | Both suites executed and passed: frontend 20/20, backend 27/27 (47/47 total) |
 | Manual testing performed (this session) | `npm run build` confirmed passing (twice — before and after the stabilization edits); a live curl-based run through register → lesson-complete → quiz-result → get-progress; a 25-request burst against `/auth/login` confirmed the new rate limiter returns 429 after the 20th attempt; all 19 frontend routes confirmed returning HTTP 200 |
 | Manual testing NOT performed | No click-through browser testing of the rendered UI (clicking buttons, watching animations, resizing for mobile) was performed — everything above is either an automated test or a scripted HTTP/build check, not a human clicking through the app in a browser |
 
@@ -377,13 +378,13 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 |---|---|---|---|
 | 1 | ~~Nothing committed to git — all Semester 2 work is uncommitted~~ | ~~High (risk of data loss)~~ | ✅ Fixed — committed to `main`, see §14 |
 | 2 | ~~Session store is in-memory (`express-session` default) — not production-viable~~ | ~~Medium~~ | ✅ Fixed — MySQL-backed via `express-mysql-session`, see §5.1 |
-| 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 43 tests across frontend + backend, see §13 |
+| 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 47 tests across frontend + backend, see §13 |
 | 4 | ~~No rate limiting on login/register/feedback endpoints~~ | ~~Medium (security)~~ | ✅ Fixed — see §5.1 |
 | 5 | ~~`addLearningMinutes()` exists but nothing calls it~~ | ~~Medium (functional gap)~~ | ✅ Fixed — see §8 |
 | 6 | ~~Dashboard's Time Distribution chart only supports 5 of 12 topics~~ | ~~Low~~ | ✅ Fixed — see §10 |
 | 7 | ~~Quiz hub's hash-link scrolling doesn't auto-scroll~~ | ~~Low~~ | ✅ Fixed — see §9 |
 | 8 | ~~No password reset~~; email verification and role-based access | Medium (feature gap) | Password reset ✅ fixed, see §7. Email verification and role-based access 🔴 still open — explicitly deferred pending scope decisions, see §16. |
-| 9 | Progress sync between server and localStorage is one-way-on-login only, not continuous | Low–Medium | 🔴 Still open — explicitly deferred, see §16 |
+| 9 | ~~Progress sync between server and localStorage is one-way-on-login only~~ | ~~Low–Medium~~ | ✅ Improved — now also re-pulls on Dashboard mount and tab-focus-regained, see §8. Still one-way (server → local, no push); that remains a deliberate scope decision, not a gap. |
 | 10 | ~~No admin interface to review feedback submissions~~ | ~~Low~~ | ✅ Fixed — see §11 |
 | 11 | `POST /api/v1/progress/last-lesson` has no dedicated automated test | Low | ⚠️ Needs testing — see §5.2 |
 | 12 | Database Systems / Java / Probability & Statistics are not learner-facing subjects | N/A | Not an issue — explicit scope decision, see §12 |
@@ -395,7 +396,7 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 The following are **not implemented** and are listed here only to separate them clearly from current state. Project scope is explicitly DSA-only (see §12) — none of these involve adding new subjects.
 
 - ~~Committing the current work to git~~ — done, see §14.
-- Continuous/bi-directional progress sync instead of one-way pull-on-login (§8).
+- ~~Continuous progress sync instead of one-way pull-on-login~~ — trigger-based re-sync added, see §8. Full bi-directional/push-based sync (websocket) was evaluated and explicitly rejected as unwarranted for this project's scope — not planned.
 - ~~A production-grade session store~~ — done, see §5.1.
 - ~~CSRF protection~~ — done, see §7.
 - ~~Password reset~~ — done, see §7. Email verification / role-based access still pending scope decisions.
@@ -420,6 +421,6 @@ The following are **not implemented** and are listed here only to separate them 
 | Rate limiting | ✅ COMPLETE (auth, reset-password, and feedback-submission endpoints) |
 | Feedback system | ✅ COMPLETE (tested, including the admin-only listing view — see §11) |
 | Frontend ↔ backend integration | ✅ COMPLETE (tested for core flows) |
-| Automated testing | ✅ COMPLETE (43 tests: 16 frontend unit, 27 backend integration, both passing) |
+| Automated testing | ✅ COMPLETE (47 tests: 20 frontend unit, 27 backend integration, both passing) |
 | Version control (commits) | ✅ COMPLETE — committed to `main`, tracked with `origin/main` (see §14) |
 | Database Systems / Java / Probability & Statistics | Out of scope by explicit decision — not gaps (§12) |
