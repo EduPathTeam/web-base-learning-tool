@@ -1,0 +1,12 @@
+node_modules
+dist
+server/node_modules
+*.sql
+package-lock.json
+
+# Out of scope for this pass — the 12 lesson pages, their visualizers,
+# and quiz content are left untouched (including formatting-only diffs).
+src/pages/lessons/*.jsx
+src/components/lessons/*Visualizer.jsx
+src/components/lessons/QuizSection.jsx
+src/data/quizQuestions.js

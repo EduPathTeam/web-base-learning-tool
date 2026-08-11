@@ -29,12 +29,14 @@ server/             Node + Express + MySQL API
 You need Node.js and a running local MySQL server.
 
 **1. Frontend**
+
 ```
 npm install
 npm run dev        # http://localhost:5173
 ```
 
 **2. Backend**
+
 ```
 cd server
 npm install
@@ -55,6 +57,16 @@ cd server && npm test   # backend: API integration tests against your local MySQ
 ```
 
 Both use Node's built-in test runner — no extra test framework dependency. The backend suite runs against your real local database (there's no separate test DB) but cleans up every row it creates.
+
+## Linting & formatting
+
+```
+npm run lint          # frontend: eslint . && prettier --check .
+npm run lint:fix       # frontend: auto-fix + reformat
+cd server && npm run lint   # backend: same, scoped to server/
+```
+
+ESLint 9 (flat config, one `eslint.config.js` per package) + Prettier. The 12 lesson pages, their visualizers, the quiz engine, and quiz content (`src/pages/lessons/`, `src/components/lessons/*Visualizer.jsx`, `QuizSection.jsx`, `src/data/quizQuestions.js`) are still linted for real bugs but are excluded from auto-fixing and Prettier's `--write`/`--check` (see `.prettierignore`) — they're out of scope to modify in this pass, even cosmetically.
 
 ## Environment variables (server/.env)
 
