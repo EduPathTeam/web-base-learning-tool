@@ -72,3 +72,7 @@ Login sessions are stored in MySQL via `express-mysql-session` (table `sessions`
 Every `POST`/`PUT`/`PATCH`/`DELETE` request to the API must carry a valid `x-csrf-token` header (double-submit cookie pattern, via `csrf-csrf`). The frontend's `apiClient.js` handles this automatically — it fetches a token from `GET /api/v1/csrf-token` on the first mutating request and caches it, so existing call sites (`apiPost`, etc.) don't need any changes. If you're calling the API directly (curl, Postman, a new script), fetch a token from that endpoint first and send it back in both the `x-csrf-token` header and as the cookie the endpoint set.
 
 Requires `CSRF_SECRET` in `server/.env` (see `.env.example`) — a long random string, separate from `SESSION_SECRET` so the two mechanisms can be rotated independently.
+
+### Production deployment note
+
+Both the session cookie and the CSRF cookie set `secure: true` when `NODE_ENV=production`, which means **the backend must be served over HTTPS in production** — browsers silently refuse to store or send `secure` cookies over plain HTTP, which would break sign-in and every CSRF-protected request. Locally (`NODE_ENV` unset), cookies are sent over HTTP as before, so local dev is unaffected.

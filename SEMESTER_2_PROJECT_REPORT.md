@@ -179,7 +179,7 @@ Each of the 12 files in `src/pages/lessons/` was checked and contains, in this o
 ## 5.1 Server setup (`server/src/app.js` + `server/src/index.js`)
 
 - Express app with `cors` (origin restricted to `CLIENT_ORIGIN` env var, `credentials: true`), `express.json()`, and `express-session`.
-- Session cookie: `httpOnly: true`, 7-day `maxAge`. **No `secure` flag set** (fine for local HTTP dev, would need to be set for HTTPS production).
+- Session cookie: `httpOnly: true`, 7-day `maxAge`, `secure: process.env.NODE_ENV === 'production'`. ✅ **Fixed in the production-readiness pass** — previously always unset (fine for local HTTP dev, but would silently omit the flag in HTTPS production too). Now environment-driven: unset locally (`NODE_ENV` unset), `true` when `NODE_ENV=production`. The CSRF cookie (§7) follows the same rule. Documented in README.md that production must be served over HTTPS as a result — a `secure` cookie is silently dropped by browsers over plain HTTP.
 - **Session store: `express-mysql-session`, backed by the `sessions` table.** ✅ **Fixed in the production-readiness pass.** Reuses the app's existing `mysql2` connection pool (`db/pool.js`) rather than opening a second one; the `sessions` table is created via `migrations/002_add_sessions_table.sql` (not the library's own auto-create — `createDatabaseTable: false`) so it goes through the same migration runner as every other table. The session store instance is exposed at `app.locals.sessionStore` so callers (e.g. the test suite's teardown) can stop its periodic expired-session cleanup interval on shutdown. No new environment variables were needed — it reuses the existing `DB_*` credentials.
 - **Rate limiting (added in the stabilization pass):** `express-rate-limit` applied to `/api/v1/auth/register`, `/api/v1/auth/login` (20 requests/15min per IP) and `/api/v1/feedback` (10 requests/15min per IP). ✅ Verified: 25 rapid login attempts returned `401` for the first 20 and `429 Too Many Requests` for the remaining 5.
 - Centralized error-handling middleware returns JSON `{ error: 'Internal server error.' }` on unhandled exceptions.
@@ -257,7 +257,7 @@ Verified in this session via `curl` + direct MySQL queries:
 | Aspect | Status | Detail |
 |---|---|---|
 | Password storage | ✅ COMPLETE | `bcryptjs`, cost factor 10, verified hash format `$2a$10$...` in the database |
-| Session mechanism | ✅ COMPLETE | `express-session` backed by `express-mysql-session` (MySQL-persisted, see §5.1) — survives restarts, shared across server instances. `secure` cookie flag still unset (see next row). |
+| Session mechanism | ✅ COMPLETE | `express-session` backed by `express-mysql-session` (MySQL-persisted, see §5.1) — survives restarts, shared across server instances, `secure` cookie flag now environment-driven (see §5.1). |
 | CORS + credentialed requests | ✅ COMPLETE | Verified via a manual OPTIONS preflight request and a full register→cookie→`/me` round trip with an `Origin: http://localhost:5173` header, matching real browser behavior |
 | Frontend session awareness | ✅ COMPLETE | `AuthContext.jsx` checks `/auth/me` on load, exposes `user`/`loading`/`login`/`register`/`logout` |
 | Guest mode | ✅ COMPLETE | The entire app functions without an account; `csPlatform.js` falls back to `localStorage` when `getCurrentUser()` is null |
