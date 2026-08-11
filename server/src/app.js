@@ -1,10 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import MySQLStoreFactory from 'express-mysql-session';
 import rateLimit from 'express-rate-limit';
+import { pool } from './db/pool.js';
 import { authRouter } from './routes/auth.js';
 import { progressRouter } from './routes/progress.js';
 import { feedbackRouter } from './routes/feedback.js';
+
+const MySQLStore = MySQLStoreFactory(session);
 
 // Express app configuration, separated from src/index.js's app.listen()
 // call so tests (server/test/*.test.js) can import and exercise the app
@@ -14,8 +18,23 @@ export function createApp() {
 
   app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
   app.use(express.json());
+
+  // Reuses the shared connection pool (db/pool.js) instead of opening a
+  // second one. createDatabaseTable is false because the `sessions` table
+  // is created by migration 002_add_sessions_table.sql, not by this
+  // library's own auto-create — CLAUDE.md's migration rules say schema
+  // changes go through migration files, never ad-hoc table creation.
+  // Passing our own pool also makes the store skip closing it on
+  // store.close() (endConnectionOnClose defaults to false when a
+  // connection is supplied), so pool lifecycle stays owned by pool.js.
+  const sessionStore = new MySQLStore({ createDatabaseTable: false }, pool);
+  // Exposed so callers (e.g. the test suite's teardown) can stop the
+  // store's periodic expired-session cleanup interval on shutdown.
+  app.locals.sessionStore = sessionStore;
+
   app.use(
     session({
+      store: sessionStore,
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,

@@ -25,7 +25,7 @@ Status legend used throughout this report:
 - **Semester 1 role (per project background provided):** requirements, system analysis, UI/UX design, interface prototypes, system workflow, proposed database design. *(Not independently verifiable from current code — the Semester 1 static prototype was replaced during Semester 2 work.)*
 - **Semester 2 role:** completing frontend, backend, database integration, authentication, API integration, learning progress, quizzes, dashboard, feedback, testing.
 - **Main subjects the platform is meant to cover:** Data Structures & Algorithms, Database Systems, Advanced Programming Languages (Java), Probability & Statistics.
-- **Current overall status:** The project was rebuilt from a static multi-page HTML/CSS/JS prototype into a React (Vite) single-page application with a separate Node/Express + MySQL backend. All 12 planned DSA lessons exist with quizzes and visualizers. Authentication and database persistence are implemented and were tested manually with `curl`. **No automated tests exist.** **No code has been committed to git yet** — all Semester 2 work is currently uncommitted in the working directory.
+- **Current overall status:** The project was rebuilt from a static multi-page HTML/CSS/JS prototype into a React (Vite) single-page application with a separate Node/Express + MySQL backend. All 12 planned DSA lessons exist with quizzes and visualizers. Authentication and database persistence are implemented and covered by automated tests (see §13). All Semester 2 work is committed to git on `main` (see §14).
 
 **What the application currently does (short summary):** A visitor can browse 12 DSA lessons (Array, Linked List, Queue, Stack, Tree, Graph, Recursion, Dynamic Programming, Sorting, Searching, Greedy, Big-O), each with an interactive visualizer, Python/Java code samples, and a 5-question quiz. Progress and quiz scores are saved to the browser's `localStorage` for guests, or to a MySQL database when the visitor registers/logs in. A dashboard shows stats (lessons completed, quiz average, streak, learning time), a "recommended major" heuristic, topic progress, recent activity, and two charts. A feedback form posts to the backend and is stored in MySQL.
 
@@ -42,7 +42,7 @@ Status legend used throughout this report:
 | Styling | Plain CSS (per-page files in `src/styles/`), Bootstrap 5 + Bootstrap Icons (via CDN `<link>` in `index.html`) | Layout/utility classes + custom component CSS | ✅ COMPLETE |
 | Backend | Node.js + Express (`express` ^4.19.2) | REST API server in `server/src/` | ✅ COMPLETE (manually tested) |
 | Database | MySQL 8 (`mysql2` ^3.11.0, promise API) | Persistent storage for users, topics, lesson progress, quiz results, feedback | ✅ COMPLETE (connected and tested against a real local MySQL 8.0.46 instance) |
-| Authentication | `bcryptjs` (password hashing) + `express-session` (session cookies) | Register/login/logout/`me`, session-gated API routes | 🟡 PARTIALLY COMPLETE (see §7 — session store is in-memory, not production-grade) |
+| Authentication | `bcryptjs` (password hashing) + `express-session` + `express-mysql-session` (MySQL-backed session cookies) | Register/login/logout/`me`, session-gated API routes | 🟡 PARTIALLY COMPLETE (see §7 — session store now production-grade; CSRF/reset/roles still outstanding) |
 | API communication | Native `fetch` via a custom wrapper (`src/lib/apiClient.js`) | Frontend → backend HTTP calls with `credentials: 'include'` | ✅ COMPLETE |
 | Environment config | `dotenv` (backend only) | `server/.env` (gitignored) holds DB credentials, session secret, port, CORS origin | ✅ COMPLETE |
 | Rate limiting | `express-rate-limit` ^8.6.2 | Applied to `/auth/register`, `/auth/login` (20 req/15min), `/feedback` (10 req/15min) | ✅ COMPLETE (verified — 21st login attempt in a window returns HTTP 429) |
@@ -180,7 +180,7 @@ Each of the 12 files in `src/pages/lessons/` was checked and contains, in this o
 
 - Express app with `cors` (origin restricted to `CLIENT_ORIGIN` env var, `credentials: true`), `express.json()`, and `express-session`.
 - Session cookie: `httpOnly: true`, 7-day `maxAge`. **No `secure` flag set** (fine for local HTTP dev, would need to be set for HTTPS production).
-- **Session store: default in-memory `MemoryStore`.** No Redis/MySQL session store configured. 🟡 This is explicitly unsuitable for production (Express prints a warning about this) — sessions are lost on server restart and this will leak memory under sustained load. Confirmed by reading `app.js`; no alternate store package (e.g. `connect-redis`, `express-mysql-session`) is installed. **Not changed in the stabilization pass** — acceptable for local/dev use, called out explicitly as a pre-production item.
+- **Session store: `express-mysql-session`, backed by the `sessions` table.** ✅ **Fixed in the production-readiness pass.** Reuses the app's existing `mysql2` connection pool (`db/pool.js`) rather than opening a second one; the `sessions` table is created via `migrations/002_add_sessions_table.sql` (not the library's own auto-create — `createDatabaseTable: false`) so it goes through the same migration runner as every other table. The session store instance is exposed at `app.locals.sessionStore` so callers (e.g. the test suite's teardown) can stop its periodic expired-session cleanup interval on shutdown. No new environment variables were needed — it reuses the existing `DB_*` credentials.
 - **Rate limiting (added in the stabilization pass):** `express-rate-limit` applied to `/api/v1/auth/register`, `/api/v1/auth/login` (20 requests/15min per IP) and `/api/v1/feedback` (10 requests/15min per IP). ✅ Verified: 25 rapid login attempts returned `401` for the first 20 and `429 Too Many Requests` for the remaining 5.
 - Centralized error-handling middleware returns JSON `{ error: 'Internal server error.' }` on unhandled exceptions.
 - `app.js` exports `createApp()` (config only, no `listen()`); `index.js` calls it and listens on `PORT` env var (default 4000). This split (done in the stabilization pass) is what allows `server/test/api.test.js` to run the real app in-process.
@@ -257,7 +257,7 @@ Verified in this session via `curl` + direct MySQL queries:
 | Aspect | Status | Detail |
 |---|---|---|
 | Password storage | ✅ COMPLETE | `bcryptjs`, cost factor 10, verified hash format `$2a$10$...` in the database |
-| Session mechanism | 🟡 PARTIALLY COMPLETE | `express-session` with default in-memory store — works for local development, **not viable for production** (data lost on restart, not shared across server instances) |
+| Session mechanism | ✅ COMPLETE | `express-session` backed by `express-mysql-session` (MySQL-persisted, see §5.1) — survives restarts, shared across server instances. `secure` cookie flag still unset (see next row). |
 | CORS + credentialed requests | ✅ COMPLETE | Verified via a manual OPTIONS preflight request and a full register→cookie→`/me` round trip with an `Origin: http://localhost:5173` header, matching real browser behavior |
 | Frontend session awareness | ✅ COMPLETE | `AuthContext.jsx` checks `/auth/me` on load, exposes `user`/`loading`/`login`/`register`/`logout` |
 | Guest mode | ✅ COMPLETE | The entire app functions without an account; `csPlatform.js` falls back to `localStorage` when `getCurrentUser()` is null |
@@ -343,13 +343,25 @@ Confirmed present in `Dashboard.jsx`:
 
 # 14. Version Control Status
 
-Checked via `git status` and `git log`:
+**Update — Production-readiness pass:** Since the section below was originally written, the working tree has been committed. Re-checked via `git status`, `git log`, and `git ls-files`:
+
+- Current branch: `main`, tracking `origin/main`, clean working tree (aside from routine dependency-lock churn).
+- The entire React frontend (`src/`, `public/`, `index.html`, `vite.config.js`, `package.json`) and the entire backend (`server/`) are **tracked and committed**. The React/Express rebuild was merged into `main` via PR #12 ("Frontend"), which in the same commit removed the old static-site files under `pages/` and the old `images/` folder.
+- `CLAUDE.md`, `PROJECT_CONTEXT.md`, `SYSTEM_ARCHITECTURE.md` are tracked and committed (still describing the pre-migration static prototype — see the note in §3).
+- `server/.env` is confirmed **not** tracked — verified via `git ls-files` (absent) and `git check-ignore -v server/.env` (matches `.gitignore`'s `.env` rule). No secrets have been committed.
+- **Conclusion: the single highest-priority risk from the original inspection (uncommitted working tree) is resolved.** All Semester 2 work, including the stabilization pass, exists in git history on `main`.
+
+<details>
+<summary>Original finding (superseded, kept for history)</summary>
+
+Checked via `git status` and `git log` at the time of the original inspection:
 
 - Current branch: `Sreyneang`.
-- The entire React frontend (`src/`, `public/`, `index.html`, `vite.config.js`, `package.json`) and the entire backend (`server/`) are **untracked** — not yet added or committed to git.
-- The old static-site files under `pages/` and the old `images/` folder show as **deleted** in the working tree (removed from disk, but the deletion itself is also not yet committed).
-- `CLAUDE.md`, `PROJECT_CONTEXT.md`, `SYSTEM_ARCHITECTURE.md` are also untracked (added but not committed).
-- **Conclusion: none of the Semester 2 work described in this report exists in git history yet — including everything added in the stabilization pass** (rate limiting, both test suites, the learning-time fix, the chart fix, the quiz-scroll fix). It only exists in the current working directory. If this machine's working directory were lost without a commit, all of this work would be lost. **This remains the single highest-priority action item.**
+- The entire React frontend and the entire backend were **untracked** — not yet added or committed to git.
+- The old static-site files under `pages/` and the old `images/` folder showed as **deleted** in the working tree (removed from disk, but the deletion itself was also not yet committed).
+- Conclusion at the time: none of the Semester 2 work existed in git history yet; if the machine's working directory were lost without a commit, all of it would be lost.
+
+</details>
 
 ---
 
@@ -359,8 +371,8 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 
 | # | Issue | Severity | Status |
 |---|---|---|---|
-| 1 | Nothing committed to git — all Semester 2 work is uncommitted | High (risk of data loss) | 🔴 Still open — see §14 |
-| 2 | Session store is in-memory (`express-session` default) — not production-viable | Medium | 🔴 Still open — acceptable for local dev, deliberately not addressed (see §16) |
+| 1 | ~~Nothing committed to git — all Semester 2 work is uncommitted~~ | ~~High (risk of data loss)~~ | ✅ Fixed — committed to `main`, see §14 |
+| 2 | ~~Session store is in-memory (`express-session` default) — not production-viable~~ | ~~Medium~~ | ✅ Fixed — MySQL-backed via `express-mysql-session`, see §5.1 |
 | 3 | ~~No automated tests anywhere~~ | ~~Medium~~ | ✅ Fixed — 33 tests across frontend + backend, see §13 |
 | 4 | ~~No rate limiting on login/register/feedback endpoints~~ | ~~Medium (security)~~ | ✅ Fixed — see §5.1 |
 | 5 | ~~`addLearningMinutes()` exists but nothing calls it~~ | ~~Medium (functional gap)~~ | ✅ Fixed — see §8 |
@@ -378,9 +390,9 @@ Items fixed in the stabilization pass are kept here (struck through) so the hist
 
 The following are **not implemented** and are listed here only to separate them clearly from current state. Project scope is explicitly DSA-only (see §12) — none of these involve adding new subjects.
 
-- **Committing the current work to git** (highest priority — see §14).
+- ~~Committing the current work to git~~ — done, see §14.
 - Continuous/bi-directional progress sync instead of one-way pull-on-login (§8).
-- A production-grade session store (e.g. Redis or a MySQL-backed session store) to replace `express-session`'s default in-memory store.
+- ~~A production-grade session store~~ — done, see §5.1.
 - CSRF protection.
 - Password reset / email verification / role-based access.
 - An admin view for submitted feedback.
@@ -400,10 +412,10 @@ The following are **not implemented** and are listed here only to separate them 
 | Dashboard (stats, charts, activity) | ✅ COMPLETE (learning-time data path fixed, chart covers all 12 topics) |
 | Backend REST API | ✅ COMPLETE (all routes tested except `last-lesson`, which is ⚠️ needs a dedicated test) |
 | MySQL database + schema | ✅ COMPLETE (tested) |
-| Authentication (register/login/session) | 🟡 PARTIALLY COMPLETE (fully functional and tested locally; in-memory session store is not production-ready — deliberately deferred) |
+| Authentication (register/login/session) | 🟡 PARTIALLY COMPLETE (functional and tested locally with a production-viable MySQL-backed session store; still missing CSRF protection, password reset, and role-based access — see §7) |
 | Rate limiting | ✅ COMPLETE (auth + feedback endpoints) |
 | Feedback system | ✅ COMPLETE (tested) |
 | Frontend ↔ backend integration | ✅ COMPLETE (tested for core flows) |
 | Automated testing | ✅ COMPLETE (33 tests: 16 frontend unit, 17 backend integration, both passing) |
-| Version control (commits) | 🔴 NOT IMPLEMENTED — nothing committed, highest-priority remaining item |
+| Version control (commits) | ✅ COMPLETE — committed to `main`, tracked with `origin/main` (see §14) |
 | Database Systems / Java / Probability & Statistics | Out of scope by explicit decision — not gaps (§12) |

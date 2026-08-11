@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 
+let app;
 let server;
 let baseUrl;
 const testEmail = `test-${Date.now()}@example.com`;
@@ -36,7 +37,7 @@ async function api(path, { method = 'GET', body, cookie } = {}) {
 }
 
 before(async () => {
-  const app = createApp();
+  app = createApp();
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://localhost:${server.address().port}`;
@@ -45,6 +46,10 @@ before(async () => {
 after(async () => {
   await pool.query('DELETE FROM users WHERE email = ?', [testEmail]);
   await pool.query('DELETE FROM feedback WHERE email = ?', ['test-feedback@example.com']);
+  // Stops the session store's periodic expired-session cleanup interval —
+  // without this, node --test hangs after the suite finishes because the
+  // interval keeps the event loop alive.
+  await app.locals.sessionStore.close();
   await pool.end();
   await new Promise((resolve) => server.close(resolve));
 });

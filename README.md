@@ -61,4 +61,8 @@ See `server/.env.example`. Never commit `server/.env` — it's gitignored.
 
 ## Known limitations
 
-See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: session storage is in-memory (fine for local dev, not production), there's no password reset/email verification, and **nothing in this project is committed to git yet** — commit the work before doing anything that could lose the working directory.
+See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL (see below), but there's still no CSRF protection, no password reset/email verification, and no admin role.
+
+### Sessions
+
+Login sessions are stored in MySQL via `express-mysql-session` (table `sessions`, created by `server/migrations/002_add_sessions_table.sql` — run `npm run migrate` after pulling this change). This replaced `express-session`'s default in-memory store, which loses all sessions on every server restart and isn't safe under concurrent load. No new environment variables are needed — the session store reuses the same `DB_*` credentials and connection pool as the rest of the app.
