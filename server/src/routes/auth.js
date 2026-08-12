@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db/pool.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 
 export const authRouter = Router();
 
@@ -54,7 +55,7 @@ authRouter.post(
       return res.status(400).json({ error: 'Email and password are required.' });
 
     const [rows] = await pool.query(
-      'SELECT id, email, password_hash, display_name, role FROM users WHERE email = ?',
+      'SELECT id, email, password_hash, display_name, role, is_active FROM users WHERE email = ?',
       [email]
     );
     const user = rows[0];
@@ -62,6 +63,16 @@ authRouter.post(
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid email or password.' });
+
+    // Checked after the password, not before: a correct password already
+    // proves this is the account owner, so telling them it's deactivated
+    // (rather than a generic "invalid email or password") isn't an
+    // account-enumeration risk the way it would be pre-password-check.
+    if (!user.is_active) {
+      return res
+        .status(403)
+        .json({ error: 'This account has been deactivated. Contact an administrator.' });
+    }
 
     req.session.userId = user.id;
     res.json({ id: user.id, email: user.email, displayName: user.display_name, role: user.role });
@@ -159,8 +170,8 @@ authRouter.post(
 
 authRouter.get(
   '/me',
+  requireAuth,
   asyncHandler(async (req, res) => {
-    if (!req.session.userId) return res.status(401).json({ error: 'Not signed in.' });
     const [rows] = await pool.query(
       'SELECT id, email, display_name, role FROM users WHERE id = ?',
       [req.session.userId]
@@ -178,9 +189,8 @@ authRouter.get(
 // updatable from the profile page.
 authRouter.patch(
   '/me',
+  requireAuth,
   asyncHandler(async (req, res) => {
-    if (!req.session.userId) return res.status(401).json({ error: 'Not signed in.' });
-
     const { displayName } = req.body || {};
     if (!displayName || !displayName.trim())
       return res.status(400).json({ error: 'Display name is required.' });

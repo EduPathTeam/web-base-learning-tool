@@ -9,6 +9,7 @@ import { pool } from './db/pool.js';
 import { authRouter } from './routes/auth.js';
 import { progressRouter } from './routes/progress.js';
 import { feedbackRouter } from './routes/feedback.js';
+import { usersRouter } from './routes/users.js';
 
 const MySQLStore = MySQLStoreFactory(session);
 const isProduction = process.env.NODE_ENV === 'production';
@@ -91,7 +92,23 @@ export function createApp() {
   // endpoints like login, registration, and feedback submission — this
   // wasn't in place before. Limits are generous enough not to interfere
   // with normal use or with the test suite's handful of requests per run.
+  //
+  // Two separate limiter instances, not one shared across all four auth
+  // paths: register/login (credential-guessing risk) and
+  // forgot-password/reset-password (token-guessing risk) are different
+  // threat models, and sharing a single 20-request budget across all
+  // four meant the test suite's own legitimate traffic (registering
+  // several isolated test users, then also exercising login and the
+  // password-reset flow in the same run) could exhaust it well before
+  // any single endpoint was actually hammered.
   const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many attempts. Please try again in a few minutes.' },
+  });
+  const passwordResetLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
     standardHeaders: true,
@@ -110,10 +127,11 @@ export function createApp() {
 
   app.use('/api/v1/auth/register', authLimiter);
   app.use('/api/v1/auth/login', authLimiter);
-  app.use('/api/v1/auth/forgot-password', authLimiter);
-  app.use('/api/v1/auth/reset-password', authLimiter);
+  app.use('/api/v1/auth/forgot-password', passwordResetLimiter);
+  app.use('/api/v1/auth/reset-password', passwordResetLimiter);
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/progress', progressRouter);
+  app.use('/api/v1/users', usersRouter);
   // Scoped to POST only (not app.use) so the rate limiter doesn't also
   // throttle the admin GET /feedback listing route.
   app.post('/api/v1/feedback', feedbackLimiter);

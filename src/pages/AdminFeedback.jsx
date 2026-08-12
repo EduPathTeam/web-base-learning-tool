@@ -81,7 +81,10 @@ export default function AdminFeedback() {
       <div className="page-shell-main">
         <div className="container section-pad">
           <h1>Feedback Submissions</h1>
-          <p>{result ? `${result.total} total submission${result.total === 1 ? '' : 's'}` : ' '}</p>
+          <p>
+            {result ? `${result.total} total submission${result.total === 1 ? '' : 's'}` : ' '}{' '}
+            &middot; <Link to="/admin/users">Manage Users</Link>
+          </p>
 
           {error && <p style={{ color: '#e0525f' }}>{error}</p>}
           {loading && !result && <p>Loading…</p>}

@@ -8,7 +8,8 @@ A DSA (Data Structures & Algorithms) learning platform: 12 interactive lessons, 
 /                   React + Vite frontend
   src/
     components/     Header, Footer, shared lesson components (quiz, visualizers, ...)
-    pages/          Home, Learn, Dashboard, Profile, Quiz, About, Feedback, AdminFeedback, lessons/*
+    pages/          Home, Learn, Dashboard, Profile, Quiz, About, Feedback, AdminFeedback,
+                    AdminUsers, lessons/*
       auth/          SignIn, SignUp, ForgotPassword, ResetPassword
     lib/            csPlatform.js (progress store), apiClient.js, authState.js
     hooks/          useScrollReveal.js, useLessonTimer.js, useProgressSync.js
@@ -18,7 +19,7 @@ server/             Node + Express + MySQL API
   src/
     app.js          Express app config (exported for tests)
     index.js        Entry point — imports app.js, calls app.listen()
-    routes/         auth, progress, feedback
+    routes/         auth, progress, feedback, users
     middleware/     requireAuth, requireAdmin, asyncHandler
     db/             connection pool + migration runner
   migrations/       numbered .sql migration files
@@ -87,7 +88,7 @@ See `server/.env.example`. Never commit `server/.env` — it's gitignored.
 
 ## Known limitations
 
-See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, password reset works, and there's a minimal admin feedback view (see below) — but there's still no email verification.
+See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, password reset works, and there's a full admin view for feedback and user management (see below) — but there's still no email verification.
 
 ### Sessions
 
@@ -107,13 +108,22 @@ This is a deliberate interim state, not an oversight — wiring up a real email 
 
 ### Admin access
 
-`users.role` is `'student'` by default; `'admin'` unlocks `/admin/feedback` (lists all feedback submissions, paginated — see `GET /api/v1/feedback` in `server/src/routes/feedback.js`). There's no self-service admin promotion yet, so to make a local account an admin, run this against your local database after registering the account normally:
+`users.role` is `'student'` by default; `'admin'` unlocks `/admin/feedback` (lists all feedback submissions, paginated) and `/admin/users` (see below). There's no self-service admin promotion at registration, so to make the _first_ local account an admin, run this against your local database after registering it normally:
 
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
-Non-admins (including signed-out visitors) get a 403/401-style message if they visit `/admin/feedback` directly; the page isn't linked from the main nav.
+After that, further promotions/demotions can be done in-app from `/admin/users` — the manual SQL statement above is only needed once, to bootstrap the first admin. Non-admins (including signed-out visitors) get a 403/401-style message if they visit either admin page directly; neither is linked from the main nav.
+
+### Admin: user management
+
+`/admin/users` — list every account (paginated), promote/demote role, deactivate/reactivate. Backed by `GET /api/v1/users`, `PATCH /api/v1/users/:id/role`, `PATCH /api/v1/users/:id/deactivate`, `PATCH /api/v1/users/:id/reactivate` (`server/src/routes/users.js`), all admin-only.
+
+- **No hard delete.** Deactivation is the moderation primitive — reversible, and doesn't cascade-delete a student's `lesson_progress`/`quiz_results` history the way a real delete would (see the schema's `ON DELETE CASCADE` rules). This was an explicit scope decision, not an omission.
+- **Deactivation takes effect immediately, not just at next login.** `requireAuth.js` and `requireAdmin.js` both look up `is_active` fresh on every request (same reasoning as the existing fresh role lookup), so a deactivated user's already-active session is rejected on its very next request — not just once their 7-day session cookie naturally expires. Login is also blocked outright (403) for a deactivated account.
+- **Two safety guards, enforced server-side:** an admin can never target their own account through these routes (no self-demote, no self-deactivate), and demoting or deactivating the last remaining _active_ admin is rejected outright, so the admin panel can never lock everyone out of itself by accident. (The manual SQL statement above remains available as a break-glass path regardless.)
+- **No audit log.** An accepted tradeoff for this project's small admin pool, not an oversight — say the word if you want one added.
 
 ### Account isolation on shared browsers
 

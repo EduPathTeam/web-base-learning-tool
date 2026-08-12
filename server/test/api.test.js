@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
+import { isLastActiveAdmin } from '../src/routes/users.js';
 
 let app;
 let server;
@@ -24,6 +25,22 @@ const nonAdminEmail = `nonadmin-test-${Date.now()}@example.com`;
 const testUserPassword = 'password123';
 let adminCookie;
 let nonAdminCookie;
+
+// Dedicated group for the /api/v1/users tests: a second, independent
+// admin (so demote/deactivate "happy path" tests don't touch adminEmail
+// or nonAdminEmail, which other tests already depend on staying as they
+// are), a target admin account for it to act on, and a separate account
+// for the deactivation/session-revocation tests.
+const userMgmtAdminEmail = `usermgmt-admin-${Date.now()}@example.com`;
+const userMgmtTargetEmail = `usermgmt-target-${Date.now()}@example.com`;
+const deactivateTestEmail = `deactivate-test-${Date.now()}@example.com`;
+const loginBlockedEmail = `login-blocked-${Date.now()}@example.com`;
+let userMgmtAdminId;
+let userMgmtAdminCookie;
+let userMgmtTargetId;
+let deactivateTestId;
+let deactivateTestCookie;
+let loginBlockedId;
 
 function hashResetToken(rawToken) {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
@@ -112,6 +129,36 @@ async function registerIsolatedUser(email, password, displayName) {
   return { id: data.id, cookie };
 }
 
+// Fetches a fresh CSRF cookie/token pair bound to an *existing* session
+// cookie (rather than a brand-new anonymous one) — needed for the
+// dedicated per-test-group cookies below, since registerIsolatedUser()
+// only returns the session cookie, not the CSRF pairing it used during
+// registration.
+async function fetchCsrfFor(sessionCookieValue) {
+  const res = await fetch(`${baseUrl}/api/v1/csrf-token`, {
+    headers: { Cookie: sessionCookieValue },
+  });
+  const csrfCookie = extractCookieNamed(res, 'csrf-token');
+  const { csrfToken: token } = await res.json();
+  return { csrfCookie, csrfToken: token };
+}
+
+async function patchAs(sessionCookieValue, path, body) {
+  const { csrfCookie, csrfToken: token } = await fetchCsrfFor(sessionCookieValue);
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: [sessionCookieValue, csrfCookie].filter(Boolean).join('; '),
+      'x-csrf-token': token,
+    },
+    body: JSON.stringify(body),
+  });
+  const isJson = res.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await res.json().catch(() => null) : null;
+  return { status: res.status, data };
+}
+
 before(async () => {
   app = createApp();
   server = app.listen(0);
@@ -137,6 +184,39 @@ before(async () => {
     'Non-Admin Test'
   );
   nonAdminCookie = nonAdminSetup.cookie;
+
+  // /api/v1/users test group.
+  const userMgmtAdminSetup = await registerIsolatedUser(
+    userMgmtAdminEmail,
+    testUserPassword,
+    'UserMgmt Admin'
+  );
+  await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [userMgmtAdminSetup.id]);
+  userMgmtAdminId = userMgmtAdminSetup.id;
+  userMgmtAdminCookie = userMgmtAdminSetup.cookie;
+
+  const userMgmtTargetSetup = await registerIsolatedUser(
+    userMgmtTargetEmail,
+    testUserPassword,
+    'UserMgmt Target'
+  );
+  await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [userMgmtTargetSetup.id]);
+  userMgmtTargetId = userMgmtTargetSetup.id;
+
+  const deactivateSetup = await registerIsolatedUser(
+    deactivateTestEmail,
+    testUserPassword,
+    'Deactivate Test'
+  );
+  deactivateTestId = deactivateSetup.id;
+  deactivateTestCookie = deactivateSetup.cookie;
+
+  const loginBlockedSetup = await registerIsolatedUser(
+    loginBlockedEmail,
+    testUserPassword,
+    'Login Blocked Test'
+  );
+  loginBlockedId = loginBlockedSetup.id;
 });
 
 after(async () => {
@@ -146,6 +226,12 @@ after(async () => {
   await pool.query('DELETE FROM users WHERE email = ?', [resetEmail]);
   await pool.query('DELETE FROM users WHERE email = ?', [adminEmail]);
   await pool.query('DELETE FROM users WHERE email = ?', [nonAdminEmail]);
+  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?)', [
+    userMgmtAdminEmail,
+    userMgmtTargetEmail,
+    deactivateTestEmail,
+    loginBlockedEmail,
+  ]);
   await pool.query('DELETE FROM feedback WHERE email = ?', ['test-feedback@example.com']);
   // Stops the session store's periodic expired-session cleanup interval —
   // without this, node --test hangs after the suite finishes because the
@@ -552,4 +638,163 @@ test('GET /api/v1/feedback as an admin returns the paginated list', async () => 
   // one row, so the real total should reflect that.
   assert.ok(data.total >= 1);
   assert.equal(data.totalPages, Math.max(1, Math.ceil(data.total / 5)));
+});
+
+// --- /api/v1/users (admin user management) ---------------------------
+
+// isLastActiveAdmin() is unit tested directly (not through a live HTTP
+// call) because this suite runs against the real local dev database,
+// whose actual admin count is unknown and unpredictable — e.g. accounts
+// promoted during earlier manual testing in this same database are still
+// there. There's no safe way to force the *real* active-admin count to
+// exactly 1 for an integration test without temporarily touching real
+// admin accounts, which this suite deliberately never does.
+test('isLastActiveAdmin identifies the last active admin, and only that case', () => {
+  assert.equal(
+    isLastActiveAdmin({ role: 'admin', is_active: true }, 1),
+    true,
+    'the sole active admin should be identified as the last one'
+  );
+  assert.equal(
+    isLastActiveAdmin({ role: 'admin', is_active: true }, 2),
+    false,
+    'not the last one when another active admin exists'
+  );
+  assert.equal(
+    isLastActiveAdmin({ role: 'admin', is_active: false }, 1),
+    false,
+    "an already-deactivated admin doesn't count toward the total being removed"
+  );
+  assert.equal(
+    isLastActiveAdmin({ role: 'student', is_active: true }, 1),
+    false,
+    'a non-admin is never "the last admin"'
+  );
+});
+
+test('GET /api/v1/users requires admin access', async () => {
+  const anonRes = await fetch(`${baseUrl}/api/v1/users`);
+  assert.equal(anonRes.status, 401);
+
+  const nonAdminRes = await fetch(`${baseUrl}/api/v1/users`, {
+    headers: { Cookie: nonAdminCookie },
+  });
+  assert.equal(nonAdminRes.status, 403);
+});
+
+test('GET /api/v1/users returns a paginated list of accounts for an admin', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/users?page=1&limit=5`, {
+    headers: { Cookie: userMgmtAdminCookie },
+  });
+  const data = await res.json();
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(data.items));
+  assert.ok(data.items.length <= 5);
+  assert.ok(data.total >= 2, 'at least the two dedicated admin-test accounts should be counted');
+  const found = data.items.find((u) => u.id === userMgmtAdminId);
+  if (found) {
+    // Only asserted when this page happens to contain it (pagination) —
+    // confirms the response shape, not presence on every page.
+    assert.equal(found.role, 'admin');
+    assert.equal(typeof found.isActive, 'boolean');
+  }
+});
+
+test('PATCH /api/v1/users/:id/role rejects changing your own role', async () => {
+  const { status, data } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${userMgmtAdminId}/role`,
+    { role: 'student' }
+  );
+  assert.equal(status, 400);
+  assert.match(data.error, /own role/i);
+});
+
+test('PATCH /api/v1/users/:id/deactivate rejects targeting your own account', async () => {
+  const { status, data } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${userMgmtAdminId}/deactivate`,
+    {}
+  );
+  assert.equal(status, 400);
+  assert.match(data.error, /own account/i);
+});
+
+test('PATCH /api/v1/users/:id/role rejects an invalid role value', async () => {
+  const { status, data } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${userMgmtTargetId}/role`,
+    { role: 'superadmin' }
+  );
+  assert.equal(status, 400);
+  assert.match(data.error, /role must be one of/i);
+});
+
+test('PATCH /api/v1/users/:id/role demotes a non-last admin', async () => {
+  const { status } = await patchAs(userMgmtAdminCookie, `/api/v1/users/${userMgmtTargetId}/role`, {
+    role: 'student',
+  });
+  assert.equal(status, 204);
+
+  const [rows] = await pool.query('SELECT role FROM users WHERE id = ?', [userMgmtTargetId]);
+  assert.equal(rows[0].role, 'student');
+});
+
+test('deactivating a user immediately revokes their existing session, and reactivating restores it', async () => {
+  // deactivateTestCookie was captured at registration and is never
+  // refreshed below — this specifically proves the check happens fresh
+  // per request (requireAuth.js), not just at login.
+  const beforeRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: deactivateTestCookie },
+  });
+  assert.equal(beforeRes.status, 200, 'sanity check: the session works before deactivation');
+
+  const { status: deactivateStatus } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${deactivateTestId}/deactivate`,
+    {}
+  );
+  assert.equal(deactivateStatus, 204);
+
+  const afterDeactivateRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: deactivateTestCookie },
+  });
+  assert.equal(
+    afterDeactivateRes.status,
+    401,
+    'the same, still-unexpired session cookie must now be rejected'
+  );
+
+  const { status: reactivateStatus } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${deactivateTestId}/reactivate`,
+    {}
+  );
+  assert.equal(reactivateStatus, 204);
+
+  const afterReactivateRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: deactivateTestCookie },
+  });
+  assert.equal(
+    afterReactivateRes.status,
+    200,
+    'reactivating restores access on the same original session, with no re-login needed'
+  );
+});
+
+test('POST /api/v1/auth/login rejects a deactivated account with 403', async () => {
+  const { status: deactivateStatus } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${loginBlockedId}/deactivate`,
+    {}
+  );
+  assert.equal(deactivateStatus, 204);
+
+  await fetchCsrfToken();
+  const { status, data } = await api('/api/v1/auth/login', {
+    method: 'POST',
+    body: { email: loginBlockedEmail, password: testUserPassword },
+  });
+  assert.equal(status, 403);
+  assert.match(data.error, /deactivated/i);
 });
