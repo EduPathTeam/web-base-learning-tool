@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Learn from './pages/Learn';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import ComingSoon from './pages/ComingSoon';
 import QuizHub from './pages/QuizHub';
 import QuizPage from './pages/QuizPage';
@@ -43,6 +44,7 @@ export default function App() {
       <Route path="/learn/greedy" element={<GreedyLesson />} />
       <Route path="/learn/big-o" element={<BigOLesson />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/profile" element={<Profile />} />
       <Route path="/quiz" element={<QuizHub />} />
       <Route path="/quiz/:topicId" element={<QuizPage />} />
       <Route path="/about" element={<About />} />

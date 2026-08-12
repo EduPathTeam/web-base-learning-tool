@@ -8,7 +8,7 @@ A DSA (Data Structures & Algorithms) learning platform: 12 interactive lessons, 
 /                   React + Vite frontend
   src/
     components/     Header, Footer, shared lesson components (quiz, visualizers, ...)
-    pages/          Home, Learn, Dashboard, Quiz, About, Feedback, AdminFeedback, lessons/*
+    pages/          Home, Learn, Dashboard, Profile, Quiz, About, Feedback, AdminFeedback, lessons/*
       auth/          SignIn, SignUp, ForgotPassword, ResetPassword
     lib/            csPlatform.js (progress store), apiClient.js, authState.js
     hooks/          useScrollReveal.js, useLessonTimer.js, useProgressSync.js
@@ -114,6 +114,14 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
 Non-admins (including signed-out visitors) get a 403/401-style message if they visit `/admin/feedback` directly; the page isn't linked from the main nav.
+
+### Account isolation on shared browsers
+
+Each account gets its own `localStorage` key (`csPlatformData_v2_user_<id>`), separate from guest browsing (`csPlatformData_v2_guest`). This used to be one shared key for everyone, so logging into a different account on the same browser showed the previous account's Dashboard data — a real bug, found via manual testing, fixed by scoping storage per identity (see `storageKeyFor()` in `csPlatform.js`). Guest progress still carries into your first login on a given account, same as before; a one-time migration handles browsers with data under the old shared key.
+
+### Profile
+
+`/profile` — view your email (read-only) and edit your display name, backed by `PATCH /api/v1/auth/me`. Email isn't editable yet: this project has no email verification, and email doubles as the login/password-reset identifier, so an unverified change would be a real lockout risk. "Change Password" links to the existing `/forgot-password` flow rather than a separate current-password-confirmation form.
 
 ### Progress sync across devices
 

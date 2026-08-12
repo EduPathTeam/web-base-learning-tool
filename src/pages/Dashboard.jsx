@@ -361,6 +361,11 @@ export default function Dashboard() {
                 <button className="btn-quick" type="button" onClick={() => navigate('/quiz')}>
                   <i className="bi bi-compass-fill"></i> Take a Quiz
                 </button>
+                {user && (
+                  <button className="btn-quick" type="button" onClick={() => navigate('/profile')}>
+                    <i className="bi bi-person-fill"></i> Edit Profile
+                  </button>
+                )}
               </div>
             </div>
           </div>

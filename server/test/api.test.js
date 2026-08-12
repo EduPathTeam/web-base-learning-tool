@@ -226,6 +226,52 @@ test('GET /api/v1/auth/me returns the signed-in user', async () => {
   assert.equal(data.email, testEmail);
 });
 
+test('PATCH /api/v1/auth/me updates the display name', async () => {
+  const { status, data } = await api('/api/v1/auth/me', {
+    method: 'PATCH',
+    cookie: sessionCookie,
+    body: { displayName: 'Updated Name' },
+  });
+  assert.equal(status, 200);
+  assert.equal(data.displayName, 'Updated Name');
+  assert.equal(data.email, testEmail, 'email must be unchanged — PATCH /me does not accept it');
+
+  const { data: meData } = await api('/api/v1/auth/me', { cookie: sessionCookie });
+  assert.equal(meData.displayName, 'Updated Name');
+});
+
+test('PATCH /api/v1/auth/me rejects an empty display name', async () => {
+  const { status, data } = await api('/api/v1/auth/me', {
+    method: 'PATCH',
+    cookie: sessionCookie,
+    body: { displayName: '   ' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /display name/i);
+});
+
+test('PATCH /api/v1/auth/me without a session is rejected', async () => {
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const freshCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: freshToken } = await tokenRes.json();
+
+  const res = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: freshCookie,
+      'x-csrf-token': freshToken,
+    },
+    body: JSON.stringify({ displayName: 'Nope' }),
+  });
+  assert.equal(res.status, 401);
+});
+
 test('POST /api/v1/auth/login rejects a wrong password', async () => {
   const { status, data } = await api('/api/v1/auth/login', {
     method: 'POST',

@@ -170,3 +170,31 @@ authRouter.get(
     res.json({ id: user.id, email: user.email, displayName: user.display_name, role: user.role });
   })
 );
+
+// Email is intentionally not editable here — this project has no email
+// verification, and email doubles as the account identifier for login
+// and password reset, so an unverified change is a real
+// lockout/account-takeover risk. Only display_name (a cosmetic field) is
+// updatable from the profile page.
+authRouter.patch(
+  '/me',
+  asyncHandler(async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not signed in.' });
+
+    const { displayName } = req.body || {};
+    if (!displayName || !displayName.trim())
+      return res.status(400).json({ error: 'Display name is required.' });
+
+    await pool.query('UPDATE users SET display_name = ? WHERE id = ?', [
+      displayName.trim(),
+      req.session.userId,
+    ]);
+
+    const [rows] = await pool.query(
+      'SELECT id, email, display_name, role FROM users WHERE id = ?',
+      [req.session.userId]
+    );
+    const user = rows[0];
+    res.json({ id: user.id, email: user.email, displayName: user.display_name, role: user.role });
+  })
+);
