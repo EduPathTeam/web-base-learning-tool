@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../styles/auth.css';
+import { useAuth } from '../../context/AuthContext';
+import '../../styles/auth.css';
 
 // Reads the token from the reset link's ?token= query param (the link
 // server/src/routes/auth.js logs to the console — there's no email

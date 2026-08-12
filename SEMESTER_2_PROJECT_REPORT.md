@@ -53,20 +53,30 @@ Status legend used throughout this report:
 
 # 3. Project Folder Structure
 
+**Rewritten 2026-08-12** to match current disk state — the version of this section from before the production-readiness pass had drifted (missing files added across that pass, and described a folder layout since reorganized). See §17 note below on what moved and why.
+
 ```text
 Web-Base-LearningTool/
 ├── index.html                     Vite SPA entry point
-├── package.json                   Frontend dependencies + scripts (dev/build/preview)
+├── package.json                   Frontend dependencies + scripts (dev/build/preview/lint/test/test:e2e)
 ├── vite.config.js
-├── README.md                      Setup instructions (added this session)
-├── CLAUDE.md                      Project rules/conventions doc (Semester 2 authoring aid)
-├── PROJECT_CONTEXT.md             Prior-state snapshot doc (describes the OLD static prototype)
-├── SYSTEM_ARCHITECTURE.md         Prior-state architecture doc (describes the OLD static prototype)
+├── playwright.config.js           e2e test runner config (two webServer entries: frontend + backend)
+├── eslint.config.js               Frontend ESLint 9 flat config
+├── .prettierrc.json / .prettierignore
+├── README.md                      Setup instructions
+├── SEMESTER_2_PROJECT_REPORT.md   This report — current source of truth
+├── docs/legacy/                   Superseded pre-React-migration docs, archived for history:
+│   ├── CLAUDE.md, PROJECT_CONTEXT.md, SYSTEM_ARCHITECTURE.md
+│   └── (moved out of the repo root 2026-08-12 so Claude Code no longer auto-loads
+│       CLAUDE.md's stale, pre-migration instructions at the start of a session)
 ├── public/
 │   └── images/                    icon.png, mission images (static assets)
+├── e2e/                           Playwright end-to-end specs (npm run test:e2e)
+│   ├── guest.spec.js, auth.spec.js, feedback.spec.js
+│   └── db.js                      Shared DB cleanup helper for the auth/feedback specs
 ├── src/
 │   ├── main.jsx                   ReactDOM root, wraps <App/> in <AuthProvider> + <BrowserRouter>
-│   ├── App.jsx                    All route definitions (19 routes)
+│   ├── App.jsx                    All route definitions
 │   ├── components/
 │   │   ├── Header.jsx             Nav bar, active-link pill animation, sign-in/sign-out state
 │   │   ├── Footer.jsx
@@ -79,48 +89,57 @@ Web-Base-LearningTool/
 │   │       ├── LessonProgressBar.jsx  "Mark Lesson Complete" widget
 │   │       ├── LessonHero.jsx, LessonNav.jsx, CodeTabs.jsx, PracticeExercise.jsx
 │   ├── pages/
-│   │   ├── Home.jsx, Learn.jsx, Dashboard.jsx, QuizHub.jsx, SignIn.jsx, About.jsx, Feedback.jsx
+│   │   ├── Home.jsx, Learn.jsx, Dashboard.jsx, QuizHub.jsx, QuizPage.jsx, About.jsx,
+│   │   │   Feedback.jsx, AdminFeedback.jsx
+│   │   ├── auth/                  SignIn.jsx, SignUp.jsx, ForgotPassword.jsx, ResetPassword.jsx
+│   │   │                          (grouped here 2026-08-12; previously flat under pages/)
 │   │   ├── ComingSoon.jsx         Generic "not built yet" placeholder (used for 404 route only)
 │   │   └── lessons/               ArrayLesson.jsx ... BigOLesson.jsx (12 files, one per topic)
 │   ├── context/
 │   │   └── AuthContext.jsx        React context: user session state, login/register/logout
+│   ├── data/
+│   │   └── quizQuestions.js       QUIZ_QUESTIONS map (5 questions per topic), used only by QuizPage.jsx
 │   ├── lib/
 │   │   ├── csPlatform.js          Progress data store (localStorage + optional API sync)
-│   │   ├── csPlatform.test.js     16 unit tests for csPlatform.js's derived-stat logic (node:test)
-│   │   ├── apiClient.js           fetch() wrapper for the backend API
+│   │   ├── csPlatform.test.js     20 unit tests for csPlatform.js's derived-stat logic (node:test)
+│   │   ├── apiClient.js           fetch() wrapper for the backend API (auto-handles CSRF tokens)
 │   │   ├── authState.js           Module-level "who is signed in" mirror (for non-React code)
 │   │   └── feedbackStore.js       Local-only feedback log (secondary to the real API call)
 │   ├── hooks/
 │   │   ├── useScrollReveal.js     IntersectionObserver-based fade-in effect
-│   │   └── useLessonTimer.js      Tracks time-on-page per lesson, feeds addLearningMinutes()
+│   │   ├── useLessonTimer.js      Tracks time-on-page per lesson, feeds addLearningMinutes()
+│   │   └── useProgressSync.js     Re-pulls server progress on Dashboard mount + tab-focus-regained
 │   └── styles/                    array.css, learn.css, dashboard.css, home.css, quiz.css,
-│                                   signin.css, feedback.css, about.css
+│                                   auth.css, feedback.css, about.css, layout.css
 └── server/
-    ├── package.json                Backend dependencies + scripts (dev/start/migrate/test)
+    ├── package.json                Backend dependencies + scripts (dev/start/migrate/test/lint)
+    ├── eslint.config.js            Backend ESLint 9 flat config (Node globals, no React rules)
     ├── .env                        Local DB credentials (gitignored, NOT committed)
     ├── .env.example                Template for .env (committed, no secrets)
-    ├── migrations/
-    │   └── 001_init.sql             Single migration: creates all 6 tables + seeds topics
+    ├── migrations/                 Numbered, applied in order by src/db/migrate.js:
+    │   ├── 001_init.sql             Core schema: users, topics, lesson_progress, quiz_results, feedback
+    │   ├── 002_add_sessions_table.sql   express-mysql-session's session store table
+    │   ├── 003_add_password_reset_tokens.sql
+    │   └── 004_add_user_roles.sql   Adds users.role ('student' default, 'admin')
     ├── test/
-    │   └── api.test.js              17 integration tests against the real app + local MySQL (node:test)
+    │   └── api.test.js              29 integration tests against the real app + local MySQL (node:test)
     └── src/
-        ├── app.js                  Express app config: CORS, sessions, rate limiting, routes, error handler
+        ├── app.js                  Express app config: CORS, sessions, CSRF, rate limiting, routes, error handler
         ├── index.js                Entry point — imports app.js, calls app.listen()
         ├── db/
         │   ├── pool.js             mysql2 connection pool
         │   └── migrate.js          Migration runner (creates DB if missing, applies new .sql files)
         ├── middleware/
         │   ├── requireAuth.js      Rejects unauthenticated requests with 401
+        │   ├── requireAdmin.js     Rejects non-admins with 401/403 (fresh DB role lookup per request)
         │   └── asyncHandler.js     Wraps async route handlers so errors reach the error handler
         └── routes/
-            ├── auth.js             POST /register, /login, /logout, GET /me
+            ├── auth.js             POST /register, /login, /logout, /forgot-password, /reset-password, GET /me
             ├── progress.js         GET /, POST /lesson-complete, /last-lesson, /quiz-result
-            └── feedback.js         POST /
+            └── feedback.js         POST / (open), GET / (admin-only, paginated)
 ```
 
 `src/app.js` was split out of `src/index.js` during the stabilization pass specifically so the test suite could import and exercise the configured app on an ephemeral port without a second manually-started process.
-
-**Note:** `CLAUDE.md`, `PROJECT_CONTEXT.md`, and `SYSTEM_ARCHITECTURE.md` at the repository root describe the **previous** static-HTML version of this project (pre-React-migration). They are now out of date relative to the current React/Express codebase and should not be treated as accurate for the current implementation — this report supersedes them for describing current state.
 
 ---
 
@@ -358,7 +377,7 @@ Confirmed present in `Dashboard.jsx`:
 
 - Current branch: `main`, tracking `origin/main`, clean working tree (aside from routine dependency-lock churn).
 - The entire React frontend (`src/`, `public/`, `index.html`, `vite.config.js`, `package.json`) and the entire backend (`server/`) are **tracked and committed**. The React/Express rebuild was merged into `main` via PR #12 ("Frontend"), which in the same commit removed the old static-site files under `pages/` and the old `images/` folder.
-- `CLAUDE.md`, `PROJECT_CONTEXT.md`, `SYSTEM_ARCHITECTURE.md` are tracked and committed (still describing the pre-migration static prototype — see the note in §3).
+- `CLAUDE.md`, `PROJECT_CONTEXT.md`, `SYSTEM_ARCHITECTURE.md` are tracked and committed, and still describe the pre-migration static prototype — as of 2026-08-12 they live at `docs/legacy/` rather than the repo root (see §3), specifically so Claude Code stops auto-loading `CLAUDE.md`'s stale instructions at the start of a session.
 - `server/.env` is confirmed **not** tracked — verified via `git ls-files` (absent) and `git check-ignore -v server/.env` (matches `.gitignore`'s `.env` rule). No secrets have been committed.
 - **Conclusion: the single highest-priority risk from the original inspection (uncommitted working tree) is resolved.** All Semester 2 work, including the stabilization pass, exists in git history on `main`.
 

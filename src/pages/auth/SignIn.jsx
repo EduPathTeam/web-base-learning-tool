@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../styles/auth.css';
+import { useAuth } from '../../context/AuthContext';
+import '../../styles/auth.css';
 
 // Single, clean centered Sign In form (replaces the old flip-panel design)
 // wired to the real server/ API (bcrypt-hashed passwords, session cookies).

@@ -8,7 +8,8 @@ A DSA (Data Structures & Algorithms) learning platform: 12 interactive lessons, 
 /                   React + Vite frontend
   src/
     components/     Header, Footer, shared lesson components (quiz, visualizers, ...)
-    pages/          Home, Learn, Dashboard, Quiz, Sign In, About, Feedback, lessons/*
+    pages/          Home, Learn, Dashboard, Quiz, About, Feedback, AdminFeedback, lessons/*
+      auth/          SignIn, SignUp, ForgotPassword, ResetPassword
     lib/            csPlatform.js (progress store), apiClient.js, authState.js
     hooks/          useScrollReveal.js, useLessonTimer.js, useProgressSync.js
     context/        AuthContext.jsx
@@ -24,6 +25,8 @@ server/             Node + Express + MySQL API
   test/             backend integration tests (node:test)
 e2e/                Playwright end-to-end specs (npm run test:e2e)
 playwright.config.js
+docs/legacy/        Superseded pre-React-migration docs, kept for history
+                    (CLAUDE.md, PROJECT_CONTEXT.md, SYSTEM_ARCHITECTURE.md)
 ```
 
 ## Running locally
