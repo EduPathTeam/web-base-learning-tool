@@ -22,6 +22,8 @@ server/             Node + Express + MySQL API
     db/             connection pool + migration runner
   migrations/       numbered .sql migration files
   test/             backend integration tests (node:test)
+e2e/                Playwright end-to-end specs (npm run test:e2e)
+playwright.config.js
 ```
 
 ## Running locally
@@ -57,6 +59,14 @@ cd server && npm test   # backend: API integration tests against your local MySQ
 ```
 
 Both use Node's built-in test runner — no extra test framework dependency. The backend suite runs against your real local database (there's no separate test DB) but cleans up every row it creates.
+
+### End-to-end (browser) tests
+
+```
+npm run test:e2e
+```
+
+Playwright, run separately from `npm test` so day-to-day runs stay fast — it drives a real Chromium browser against real dev servers and your real local MySQL (same setup as the backend integration suite; `server/.env` must be filled in). It starts the frontend and backend dev servers itself (see `playwright.config.js`'s `webServer` entries) and cleans up every row it creates. Covers: the guest flow (lesson → mark complete → take its quiz → Dashboard reflects it, no account), the auth flow (register → sign out → sign back in on a **fresh browser context** → progress persisted from the server, not just the browser), and the feedback form (submit → success state).
 
 ## Linting & formatting
 

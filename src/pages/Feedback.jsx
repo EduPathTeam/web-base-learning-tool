@@ -170,9 +170,8 @@ export default function Feedback() {
                     </div>
                     <h3>Thank You!</h3>
                     <p className="mb-3">
-                      Your feedback has been saved. This project doesn't have a server yet, so it's
-                      stored in your browser for now rather than sent anywhere — but it's real, not
-                      simulated.
+                      Your feedback has been saved to our database. We read every submission and use
+                      it to guide what we build next.
                     </p>
                     <button type="button" className="btn-primary-custom" onClick={resetForm}>
                       Send More Feedback

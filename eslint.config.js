@@ -43,5 +43,18 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
+  // Playwright config + e2e specs run in Node, not the browser — no React
+  // rules, Node globals (process, etc.) instead of browser ones.
+  {
+    files: ['playwright.config.js', 'e2e/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node, ...globals.es2021 },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
   prettierConfig,
 ];
