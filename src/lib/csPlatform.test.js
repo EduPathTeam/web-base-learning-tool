@@ -32,14 +32,17 @@ class MemoryStorage {
 }
 
 let csPlatform;
+let authState;
 
 before(async () => {
   globalThis.localStorage = new MemoryStorage();
   csPlatform = await import('./csPlatform.js');
+  authState = await import('./authState.js');
 });
 
 function freshData() {
   globalThis.localStorage.clear();
+  authState.setCurrentUser(null);
   return csPlatform.getData();
 }
 
@@ -220,4 +223,106 @@ test('mergeServerProgress leaves a topic untouched when the server has no result
   const server = { completedLessons: {}, quizResults: {} };
   csPlatform.mergeServerProgress(data, server);
   assert.deepEqual(data.quizResults.queues, [60]);
+});
+
+test("logging in as a different user does not leak the previous account's local data", () => {
+  freshData();
+  const userA = { id: 101, email: 'a@example.com', displayName: 'User A' };
+  const userB = { id: 202, email: 'b@example.com', displayName: 'User B' };
+
+  authState.setCurrentUser(userA);
+  csPlatform.markLessonComplete('arrays');
+  csPlatform.markLessonComplete('arrays');
+  csPlatform.recordQuizResult('arrays', 90);
+  const aData = csPlatform.getData();
+  assert.equal(aData.completedLessons.arrays, 2);
+  assert.deepEqual(aData.quizResults.arrays, [90]);
+  assert.equal(
+    aData.recentActivity.length,
+    3,
+    'A should have 3 activity entries (2 lessons + 1 quiz)'
+  );
+
+  authState.setCurrentUser(userB);
+  const bData = csPlatform.getData();
+  assert.equal(bData.completedLessons.arrays, 0, "user B must not see user A's lesson progress");
+  assert.deepEqual(bData.quizResults, {}, "user B must not see user A's quiz results");
+  assert.equal(bData.recentActivity.length, 0, "user B must not see user A's activity feed");
+
+  // B does their own thing — must not affect A's stored data either.
+  csPlatform.markLessonComplete('queues');
+  const bDataAfter = csPlatform.getData();
+  assert.equal(bDataAfter.completedLessons.queues, 1);
+
+  authState.setCurrentUser(userA);
+  const aDataAgain = csPlatform.getData();
+  assert.equal(
+    aDataAgain.completedLessons.arrays,
+    2,
+    "A's progress must be untouched by B's session"
+  );
+  assert.equal(
+    aDataAgain.completedLessons.queues,
+    0,
+    "A never touched queues — B's activity must not appear here"
+  );
+  assert.deepEqual(aDataAgain.quizResults.arrays, [90]);
+
+  authState.setCurrentUser(null);
+});
+
+test("seedAccountFromGuestIfFirstTime carries guest progress into a brand-new account's first login", () => {
+  freshData();
+  csPlatform.markLessonComplete('trees');
+  const guestData = csPlatform.getData();
+  assert.equal(guestData.completedLessons.trees, 1);
+
+  const newUser = { id: 303, email: 'new@example.com', displayName: 'New User' };
+  const seeded = csPlatform.seedAccountFromGuestIfFirstTime(newUser);
+  assert.equal(seeded, true);
+
+  authState.setCurrentUser(newUser);
+  const accountData = csPlatform.getData();
+  assert.equal(
+    accountData.completedLessons.trees,
+    1,
+    "the new account should inherit the guest's progress"
+  );
+
+  authState.setCurrentUser(null);
+  const guestDataAfter = csPlatform.getData();
+  assert.equal(
+    guestDataAfter.completedLessons.trees,
+    0,
+    'the guest slate should be cleared after being claimed'
+  );
+});
+
+test('seedAccountFromGuestIfFirstTime does not overwrite an account that already has its own local data', () => {
+  freshData();
+  const returningUser = { id: 404, email: 'returning@example.com', displayName: 'Returning User' };
+
+  authState.setCurrentUser(returningUser);
+  csPlatform.markLessonComplete('stacks');
+
+  authState.setCurrentUser(null);
+  csPlatform.markLessonComplete('queues'); // unrelated guest activity on this browser later
+
+  const seeded = csPlatform.seedAccountFromGuestIfFirstTime(returningUser);
+  assert.equal(
+    seeded,
+    false,
+    "an account with its own existing data shouldn't be re-seeded from guest data"
+  );
+
+  authState.setCurrentUser(returningUser);
+  const data = csPlatform.getData();
+  assert.equal(
+    data.completedLessons.stacks,
+    1,
+    "the account's own prior progress must be untouched"
+  );
+  assert.equal(data.completedLessons.queues, 0, 'unrelated guest activity must not leak in');
+
+  authState.setCurrentUser(null);
 });

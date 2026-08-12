@@ -5,8 +5,13 @@ const email = `e2e-auth-${Date.now()}@example.com`;
 const password = 'password123';
 const displayName = 'E2E Auth Tester';
 
+const switchEmailA = `e2e-switch-a-${Date.now()}@example.com`;
+const switchEmailB = `e2e-switch-b-${Date.now()}@example.com`;
+const switchPassword = 'password123';
+
 test.afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email = ?', [email]);
+  await pool.query('DELETE FROM users WHERE email IN (?, ?)', [switchEmailA, switchEmailB]);
   await pool.end();
 });
 
@@ -61,4 +66,52 @@ test('register, sign out, sign back in on a fresh browser context, and see progr
   await expect(lessonsCompletedCard.locator('.stat-value')).toHaveText('1');
 
   await freshContext.close();
+});
+
+test("switching accounts in the same browser does not leak the previous account's Dashboard data", async ({
+  page,
+}) => {
+  const lessonsCompletedCard = page.locator('.stat-card').filter({ hasText: 'Lessons Completed' });
+
+  // Register and sign in as A, mark a lesson complete.
+  await page.goto('/sign-up');
+  await page.getByLabel('Name').fill('Switch Test A');
+  await page.getByLabel('Email').fill(switchEmailA);
+  await page.getByLabel('Password', { exact: true }).fill(switchPassword);
+  await page.getByLabel('Confirm Password').fill(switchPassword);
+  await page.getByRole('button', { name: 'Create Account' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.goto('/learn/array');
+  const syncResponse = page.waitForResponse(
+    (res) => res.url().includes('/progress/lesson-complete') && res.status() === 204
+  );
+  await page.getByRole('button', { name: 'Mark Lesson Complete' }).click();
+  await syncResponse;
+
+  await page.goto('/dashboard');
+  await expect(lessonsCompletedCard.locator('.stat-value')).toHaveText('1');
+
+  // Sign out — same tab, same browser context, no fresh context this time.
+  await page
+    .locator('nav.nav')
+    .getByRole('button', { name: /Sign Out/ })
+    .click();
+  await expect(page).toHaveURL('/');
+
+  // Register and sign in as B, right here in the same browser. B has
+  // never completed a lesson — the Dashboard must show 0, not A's 1.
+  await page.goto('/sign-up');
+  await page.getByLabel('Name').fill('Switch Test B');
+  await page.getByLabel('Email').fill(switchEmailB);
+  await page.getByLabel('Password', { exact: true }).fill(switchPassword);
+  await page.getByLabel('Confirm Password').fill(switchPassword);
+  await page.getByRole('button', { name: 'Create Account' }).click();
+
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Welcome back, Switch Test B!')).toBeVisible();
+  await expect(lessonsCompletedCard.locator('.stat-value')).toHaveText(
+    '0',
+    "user B must not inherit user A's completed-lesson count"
+  );
 });
