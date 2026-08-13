@@ -102,9 +102,7 @@ Requires `CSRF_SECRET` in `server/.env` (see `.env.example`) — a long random s
 
 ### Password reset
 
-`/forgot-password` → `POST /api/v1/auth/forgot-password` generates a random token, stores only its SHA-256 hash (`password_reset_tokens` table), and — **because no transactional email provider is configured yet** — logs the reset link to the **server console only**, clearly labeled `[DEV ONLY — no email provider configured]`. Copy that link from the terminal running `server`'s `npm run dev`/`npm start` to test the flow locally. Tokens expire after 1 hour and can only be used once. `/reset-password?token=...` (the link's destination) collects a new password and submits it to `POST /api/v1/auth/reset-password`.
-
-This is a deliberate interim state, not an oversight — wiring up a real email provider (e.g. SendGrid/Postmark/SES) is a separate decision requiring its own sign-off before being added.
+`/forgot-password` → `POST /api/v1/auth/forgot-password` generates a random token, stores only its SHA-256 hash (`password_reset_tokens` table), and emails the reset link via [Resend](https://resend.com) (`server/src/lib/email.js`). Requires `RESEND_API_KEY` and `EMAIL_FROM` in `server/.env` (see `.env.example`) — without a verified domain, `EMAIL_FROM` must use Resend's shared sandbox sender (`onboarding@resend.dev`). A send failure is logged server-side but still returns the same generic response as success, so this endpoint can't be used to enumerate accounts by way of an error difference either. Tokens expire after 1 hour and can only be used once. `/reset-password?token=...` (the link's destination) collects a new password and submits it to `POST /api/v1/auth/reset-password`.
 
 ### Admin access
 

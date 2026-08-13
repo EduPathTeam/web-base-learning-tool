@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../db/pool.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { emailer } from '../lib/email.js';
 
 export const authRouter = Router();
 
@@ -83,12 +84,9 @@ authRouter.post('/logout', (req, res) => {
   req.session.destroy(() => res.status(204).end());
 });
 
-// There's no transactional email provider configured in this project yet
-// (see README.md), so instead of pretending to send an email — the kind
-// of fake success state CLAUDE.md's rules forbid — the reset link is
-// logged to the server console, clearly labeled as a dev-only stand-in.
 // The response message is identical whether or not the email is
-// registered, so this endpoint can't be used to enumerate accounts.
+// registered, so this endpoint can't be used to enumerate accounts —
+// including when the send itself fails, which is only logged server-side.
 authRouter.post(
   '/forgot-password',
   asyncHandler(async (req, res) => {
@@ -115,11 +113,11 @@ authRouter.post(
       );
 
       const resetUrl = `${process.env.CLIENT_ORIGIN}/reset-password?token=${rawToken}`;
-      // DEV-ONLY STAND-IN FOR REAL EMAIL DELIVERY. There is no email
-      // provider wired up — see README.md's "Password reset" section.
-      console.log(
-        `[DEV ONLY — no email provider configured] Password reset link for ${email}: ${resetUrl} (expires in 1 hour)`
-      );
+      try {
+        await emailer.send(email, resetUrl);
+      } catch (err) {
+        console.error('Failed to send password reset email:', err.message);
+      }
     }
 
     res.json({

@@ -12,6 +12,15 @@ import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 import { isLastActiveAdmin } from '../src/routes/users.js';
 import { suppressBelowMinSample, lastNMonths, MIN_SAMPLE_SIZE } from '../src/routes/analytics.js';
+import { emailer } from '../src/lib/email.js';
+
+// The real emailer sends real emails via Resend — replace it with an
+// in-memory recorder so this suite never sends anything real, while still
+// exercising the forgot-password route's call-or-don't-call-it logic.
+const sentEmails = [];
+emailer.send = async (to, resetUrl) => {
+  sentEmails.push({ to, resetUrl });
+};
 
 let app;
 let server;
@@ -551,6 +560,45 @@ test('POST /api/v1/auth/forgot-password creates a reset token for a registered e
     [resetUserId]
   );
   assert.ok(rows.length >= 1, 'expected a reset token row to be created');
+});
+
+test('POST /api/v1/auth/forgot-password emails the reset link for a registered email', async () => {
+  sentEmails.length = 0;
+  const { status } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: resetEmail },
+  });
+  assert.equal(status, 200);
+  assert.equal(sentEmails.length, 1);
+  assert.equal(sentEmails[0].to, resetEmail);
+  assert.match(sentEmails[0].resetUrl, /\/reset-password\?token=/);
+});
+
+test('POST /api/v1/auth/forgot-password does not attempt to send an email for an unregistered address', async () => {
+  sentEmails.length = 0;
+  const { status } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'definitely-not-registered-2@example.com' },
+  });
+  assert.equal(status, 200);
+  assert.equal(sentEmails.length, 0);
+});
+
+test('POST /api/v1/auth/forgot-password still returns the generic success response when the email send fails', async () => {
+  const originalSend = emailer.send;
+  emailer.send = async () => {
+    throw new Error('Simulated Resend outage');
+  };
+  try {
+    const { status, data } = await api('/api/v1/auth/forgot-password', {
+      method: 'POST',
+      body: { email: resetEmail },
+    });
+    assert.equal(status, 200);
+    assert.match(data.message, /reset link has been sent/i);
+  } finally {
+    emailer.send = originalSend;
+  }
 });
 
 test('POST /api/v1/auth/reset-password succeeds with a valid token and the new password can log in', async () => {
