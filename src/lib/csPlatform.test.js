@@ -1,6 +1,6 @@
 // Unit tests for csPlatform.js's pure/derived-stat functions — the logic
-// that feeds the Dashboard (streaks, averages, totals, recommended major,
-// continue-learning resolution). These are plain data transforms with no
+// that feeds the Dashboard (streaks, averages, totals, continue-learning
+// resolution). These are plain data transforms with no
 // React/DOM dependency, so they're tested directly with Node's built-in
 // test runner instead of needing a browser test harness.
 //
@@ -68,7 +68,6 @@ test('TOPICS contains exactly the 12 DSA topics, each with a 10-lesson total', (
 
 test('getData() returns a fresh, all-zero state when localStorage is empty', () => {
   const data = freshData();
-  assert.equal(data.recommendedMajor, null);
   assert.deepEqual(data.recentActivity, []);
   csPlatform.TOPICS.forEach((t) => assert.equal(data.completedLessons[t.id], 0));
 });
@@ -121,22 +120,6 @@ test('computeTotals sums completed lessons and the fixed total across all 12 top
   const { completed, total } = csPlatform.computeTotals(data);
   assert.equal(completed, 3);
   assert.equal(total, 120); // 12 topics x 10 lessons
-});
-
-test('computeRecommendedMajor is null until at least one quiz has been taken', () => {
-  const data = freshData();
-  assert.equal(csPlatform.computeRecommendedMajor(data), null);
-});
-
-test('computeRecommendedMajor picks a major once quiz data exists, with percent clamped to [60, 98]', () => {
-  freshData();
-  csPlatform.recordQuizResult('arrays', 100);
-  csPlatform.markLessonComplete('arrays');
-  const data = csPlatform.getData();
-  const rec = csPlatform.computeRecommendedMajor(data);
-  assert.ok(rec, 'expected a recommendation once quiz data exists');
-  assert.ok(rec.percent >= 60 && rec.percent <= 98);
-  assert.ok(Array.isArray(rec.reasons) && rec.reasons.length > 0);
 });
 
 test('findContinueLearningUrl defaults to the first lesson when nothing is in progress', () => {

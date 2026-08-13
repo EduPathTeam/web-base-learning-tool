@@ -116,36 +116,6 @@ function migrateLegacySharedData() {
   }
 }
 
-const MAJORS = [
-  {
-    name: 'Data Science',
-    weightTopics: ['arrays', 'trees', 'sorting'],
-    reasons: [
-      'Strong performance in algorithm complexity',
-      'High engagement with data structures',
-      'Excellent analytical problem-solving',
-    ],
-  },
-  {
-    name: 'Software Engineering',
-    weightTopics: ['linked-lists', 'stacks', 'queues'],
-    reasons: [
-      'Consistent progress across core data structures',
-      'Solid grasp of memory and reference-based structures',
-      'Good balance across multiple topics',
-    ],
-  },
-  {
-    name: 'Artificial Intelligence',
-    weightTopics: ['graphs', 'trees', 'sorting'],
-    reasons: [
-      'High accuracy on graph and tree traversal quizzes',
-      'Comfortable with recursive problem-solving',
-      'Fast completion time on optimization topics',
-    ],
-  },
-];
-
 function buildDefaultData() {
   const emptyPerTopic = {};
   TOPICS.forEach((t) => (emptyPerTopic[t.id] = 0));
@@ -158,7 +128,6 @@ function buildDefaultData() {
     activeDates: [],
     recentActivity: [],
     lastLesson: null,
-    recommendedMajor: null,
   };
 }
 
@@ -212,40 +181,6 @@ function recordActiveDate(data) {
   }
 }
 
-export function computeRecommendedMajor(data) {
-  const hasAnyQuizData = Object.values(data.quizResults).some((arr) => arr.length > 0);
-  if (!hasAnyQuizData) return null;
-
-  let best = null;
-  let bestScore = -1;
-
-  MAJORS.forEach((major) => {
-    let score = 0;
-    let weightCount = 0;
-    major.weightTopics.forEach((topicId) => {
-      const topic = TOPICS.find((t) => t.id === topicId);
-      const completedPct = ((data.completedLessons[topicId] || 0) / topic.total) * 100;
-      const quizScores = data.quizResults[topicId] || [];
-      const avgQuiz = quizScores.length
-        ? quizScores.reduce((a, b) => a + b, 0) / quizScores.length
-        : 0;
-      score += completedPct * 0.5 + avgQuiz * 0.5;
-      weightCount += 1;
-    });
-    const normalized = weightCount ? score / weightCount : 0;
-    if (normalized > bestScore) {
-      bestScore = normalized;
-      best = major;
-    }
-  });
-
-  return {
-    name: best.name,
-    percent: Math.max(60, Math.min(98, Math.round(bestScore))),
-    reasons: best.reasons,
-  };
-}
-
 export function markLessonComplete(topicId) {
   const data = getData();
   const topic = TOPICS.find((t) => t.id === topicId);
@@ -261,7 +196,6 @@ export function markLessonComplete(topicId) {
   });
 
   recordActiveDate(data);
-  data.recommendedMajor = computeRecommendedMajor(data);
   saveData(data);
 
   if (getCurrentUser()) {
@@ -292,7 +226,6 @@ export function recordQuizResult(topicId, score) {
   data.weeklyPerformance = weekly;
 
   recordActiveDate(data);
-  data.recommendedMajor = computeRecommendedMajor(data);
   saveData(data);
 
   if (getCurrentUser()) {
@@ -343,7 +276,6 @@ export function mergeServerProgress(data, server) {
     }
   });
 
-  data.recommendedMajor = computeRecommendedMajor(data);
   return data;
 }
 

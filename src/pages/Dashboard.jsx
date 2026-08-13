@@ -9,12 +9,10 @@ import { useAuth } from '../context/AuthContext';
 import {
   TOPICS,
   getData,
-  saveData,
   computeTotals,
   computeAverageScore,
   computeStreak,
   computeTotalLearningHours,
-  computeRecommendedMajor,
   findContinueLearningUrl,
   timeAgo,
 } from '../lib/csPlatform';
@@ -55,10 +53,7 @@ export default function Dashboard() {
   const pieChartRef = useRef(null);
 
   useEffect(() => {
-    const d = getData();
-    d.recommendedMajor = computeRecommendedMajor(d);
-    saveData(d);
-    setData(d);
+    setData(getData());
   }, []);
 
   // Re-pulls server progress on mount and on tab-focus-regained (see
@@ -156,7 +151,6 @@ export default function Dashboard() {
   const avgScore = computeAverageScore(data);
   const streak = computeStreak(data);
   const hours = computeTotalLearningHours(data);
-  const rec = data.recommendedMajor;
 
   const pieValues = pieTopics.map(
     (t) => Math.round(((data.learningTimeMinutes[t.id] || 0) / 60) * 10) / 10
@@ -243,49 +237,13 @@ export default function Dashboard() {
         </section>
 
         <section className="row g-3 section-gap">
-          <div className="col-lg-8">
+          <div className="col-12">
             <div className="card-panel chart-card hoverable reveal-on-scroll">
               <div className="panel-title">
                 <i className="bi bi-graph-up-arrow"></i> Performance Trend
               </div>
               <p className="panel-subtitle">Your quiz scores over the past 6 weeks</p>
               <canvas ref={perfCanvasRef} height="110"></canvas>
-            </div>
-          </div>
-
-          <div className="col-lg-4">
-            <div className="card-panel recommend-card reveal-on-scroll">
-              <div className="recommend-eyebrow">
-                <i className="bi bi-star-fill"></i> Recommended Major
-              </div>
-              <div className="recommend-major-row">
-                <span className="recommend-major-name">{rec ? rec.name : 'Not yet available'}</span>
-                <span className="recommend-percent">{rec ? `${rec.percent}%` : ''}</span>
-              </div>
-              <div className="recommend-progress">
-                <span style={{ width: `${rec ? rec.percent : 0}%` }}></span>
-              </div>
-              <div className="panel-subtitle" style={{ color: '#3c6a1e', marginBottom: '8px' }}>
-                Based on:
-              </div>
-              <ul className="recommend-reasons">
-                {rec ? (
-                  rec.reasons.map((r) => (
-                    <li key={r}>
-                      <i className="bi bi-check-circle-fill"></i>
-                      <span>{r}</span>
-                    </li>
-                  ))
-                ) : (
-                  <li>
-                    <i className="bi bi-info-circle-fill"></i>
-                    <span>Take a lesson quiz to get a personalized major recommendation.</span>
-                  </li>
-                )}
-              </ul>
-              <button className="btn btn-retake" type="button" onClick={() => navigate('/quiz')}>
-                Retake Quiz
-              </button>
             </div>
           </div>
         </section>
