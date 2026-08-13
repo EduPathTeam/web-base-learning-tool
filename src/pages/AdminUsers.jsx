@@ -124,7 +124,8 @@ export default function AdminUsers() {
           <h1>User Management</h1>
           <p>
             {result ? `${result.total} account${result.total === 1 ? '' : 's'}` : ' '} &middot;{' '}
-            <Link to="/admin/feedback">View Feedback Submissions</Link>
+            <Link to="/admin/feedback">View Feedback Submissions</Link> &middot;{' '}
+            <Link to="/admin/analytics">Platform Analytics</Link>
           </p>
 
           {error && <p style={{ color: '#e0525f' }}>{error}</p>}

@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 import { isLastActiveAdmin } from '../src/routes/users.js';
+import { suppressBelowMinSample, lastNMonths, MIN_SAMPLE_SIZE } from '../src/routes/analytics.js';
 
 let app;
 let server;
@@ -797,4 +798,107 @@ test('POST /api/v1/auth/login rejects a deactivated account with 403', async () 
   });
   assert.equal(status, 403);
   assert.match(data.error, /deactivated/i);
+});
+
+// --- /api/v1/analytics (admin platform analytics) ---------------------
+
+// Unit tested directly (not through a live HTTP call), same reasoning as
+// isLastActiveAdmin above: this suite runs against the real local dev
+// database, so how many users have touched any given topic's quiz/lessons
+// is unknown and unpredictable — there's no safe way to force a topic's
+// contributing-user count to exactly 4 vs. 5 without disturbing real data.
+test('suppressBelowMinSample hides values with too small a sample, and only those', () => {
+  assert.equal(suppressBelowMinSample(87.5, 4), null, 'below the minimum should be suppressed');
+  assert.equal(
+    suppressBelowMinSample(87.5, 5),
+    87.5,
+    'exactly the minimum should not be suppressed'
+  );
+  assert.equal(
+    suppressBelowMinSample(87.5, 10),
+    87.5,
+    'well above the minimum should not be suppressed'
+  );
+  assert.equal(suppressBelowMinSample(0, 0), null, 'zero samples must always be suppressed');
+  assert.equal(suppressBelowMinSample(50, 2, 3), null, 'a custom threshold is respected');
+});
+
+test('lastNMonths returns a gap-free, ascending run of months ending at the reference date', () => {
+  const months = lastNMonths(new Date(Date.UTC(2026, 2, 15)), 12); // March 2026
+  assert.deepEqual(months, [
+    '2025-04',
+    '2025-05',
+    '2025-06',
+    '2025-07',
+    '2025-08',
+    '2025-09',
+    '2025-10',
+    '2025-11',
+    '2025-12',
+    '2026-01',
+    '2026-02',
+    '2026-03',
+  ]);
+});
+
+test('lastNMonths handles a year boundary and a custom window size', () => {
+  const months = lastNMonths(new Date(Date.UTC(2026, 0, 1)), 3); // Jan 2026
+  assert.deepEqual(months, ['2025-11', '2025-12', '2026-01']);
+});
+
+test('GET /api/v1/analytics requires admin access', async () => {
+  const anonRes = await fetch(`${baseUrl}/api/v1/analytics`);
+  assert.equal(anonRes.status, 401);
+
+  const nonAdminRes = await fetch(`${baseUrl}/api/v1/analytics`, {
+    headers: { Cookie: nonAdminCookie },
+  });
+  assert.equal(nonAdminRes.status, 403);
+});
+
+// Asserts invariants rather than exact numbers, since the real dev database
+// this suite runs against has an unknown, unpredictable amount of prior
+// quiz/lesson activity per topic (see the comment on suppressBelowMinSample
+// above) — but every topic's suppression state must be internally
+// consistent with its own sample size regardless of what that size is.
+test('GET /api/v1/analytics returns platform-wide aggregates, with small-n topics suppressed', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/analytics`, {
+    headers: { Cookie: userMgmtAdminCookie },
+  });
+  const data = await res.json();
+  assert.equal(res.status, 200);
+
+  assert.equal(data.users.total, data.users.active + data.users.deactivated);
+  assert.ok(data.users.total >= 1);
+
+  assert.equal(data.signupTrend.length, 12);
+  data.signupTrend.forEach((m) => assert.match(m.month, /^\d{4}-\d{2}$/));
+  assert.ok(data.signupTrend.every((m) => m.count >= 0));
+
+  assert.equal(data.quizAverageByTopic.length, 12);
+  data.quizAverageByTopic.forEach((t) => {
+    if (t.avgScore === null) {
+      assert.ok(t.userCount < data.minSampleSize, `${t.topicId} suppressed but has enough users`);
+    } else {
+      assert.ok(t.userCount >= data.minSampleSize, `${t.topicId} not suppressed but too few users`);
+      assert.ok(t.avgScore >= 0 && t.avgScore <= 100);
+    }
+  });
+
+  assert.equal(data.completionByTopic.length, 12);
+  data.completionByTopic.forEach((t) => {
+    if (t.avgCompletionPct === null) {
+      assert.ok(t.usersStarted < data.minSampleSize);
+    } else {
+      assert.ok(t.usersStarted >= data.minSampleSize);
+      assert.ok(t.avgCompletionPct >= 0 && t.avgCompletionPct <= 100);
+    }
+  });
+
+  assert.ok(data.feedback.total >= 0);
+  if (data.feedback.avgRating !== null) {
+    assert.ok(data.feedback.avgRating >= 0 && data.feedback.avgRating <= 5);
+  }
+
+  assert.equal(data.minSampleSize, MIN_SAMPLE_SIZE);
 });

@@ -14,6 +14,7 @@ import About from './pages/About';
 import Feedback from './pages/Feedback';
 import AdminFeedback from './pages/AdminFeedback';
 import AdminUsers from './pages/AdminUsers';
+import AdminAnalytics from './pages/AdminAnalytics';
 import ArrayLesson from './pages/lessons/ArrayLesson';
 import LinkedListLesson from './pages/lessons/LinkedListLesson';
 import QueueLesson from './pages/lessons/QueueLesson';
@@ -56,6 +57,7 @@ export default function App() {
       <Route path="/feedback" element={<Feedback />} />
       <Route path="/admin/feedback" element={<AdminFeedback />} />
       <Route path="/admin/users" element={<AdminUsers />} />
+      <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route path="*" element={<ComingSoon title="Page not found" />} />
     </Routes>
   );

@@ -9,7 +9,7 @@ A DSA (Data Structures & Algorithms) learning platform: 12 interactive lessons, 
   src/
     components/     Header, Footer, shared lesson components (quiz, visualizers, ...)
     pages/          Home, Learn, Dashboard, Profile, Quiz, About, Feedback, AdminFeedback,
-                    AdminUsers, lessons/*
+                    AdminUsers, AdminAnalytics, lessons/*
       auth/          SignIn, SignUp, ForgotPassword, ResetPassword
     lib/            csPlatform.js (progress store), apiClient.js, authState.js
     hooks/          useScrollReveal.js, useLessonTimer.js, useProgressSync.js
@@ -19,7 +19,7 @@ server/             Node + Express + MySQL API
   src/
     app.js          Express app config (exported for tests)
     index.js        Entry point — imports app.js, calls app.listen()
-    routes/         auth, progress, feedback, users
+    routes/         auth, progress, feedback, users, analytics
     middleware/     requireAuth, requireAdmin, asyncHandler
     db/             connection pool + migration runner
   migrations/       numbered .sql migration files
@@ -88,7 +88,7 @@ See `server/.env.example`. Never commit `server/.env` — it's gitignored.
 
 ## Known limitations
 
-See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, password reset works, and there's a full admin view for feedback and user management (see below) — but there's still no email verification.
+See `SEMESTER_2_PROJECT_REPORT.md` for a full, verified breakdown of what's implemented vs. outstanding. In short: sessions are persisted in MySQL, every state-changing request is CSRF-protected, password reset works, and there's a full admin suite for feedback, user management, and platform analytics (see below) — but there's still no email verification.
 
 ### Sessions
 
@@ -124,6 +124,14 @@ After that, further promotions/demotions can be done in-app from `/admin/users` 
 - **Deactivation takes effect immediately, not just at next login.** `requireAuth.js` and `requireAdmin.js` both look up `is_active` fresh on every request (same reasoning as the existing fresh role lookup), so a deactivated user's already-active session is rejected on its very next request — not just once their 7-day session cookie naturally expires. Login is also blocked outright (403) for a deactivated account.
 - **Two safety guards, enforced server-side:** an admin can never target their own account through these routes (no self-demote, no self-deactivate), and demoting or deactivating the last remaining _active_ admin is rejected outright, so the admin panel can never lock everyone out of itself by accident. (The manual SQL statement above remains available as a break-glass path regardless.)
 - **No audit log.** An accepted tradeoff for this project's small admin pool, not an oversight — say the word if you want one added.
+
+### Admin: platform analytics
+
+`/admin/analytics` — read-only, platform-wide aggregates: total/active/deactivated users, signups per month (last 12 months), average quiz score per topic, average lesson completion per topic, and feedback totals/average rating. Backed by a single `GET /api/v1/analytics` (`server/src/routes/analytics.js`), admin-only. Deliberately **no per-user drill-down** (that's `/admin/users`) and **no content/quiz editing** — the latter is a separate, bigger decision that hasn't been made.
+
+- **Per-user quiz averaging, not per-attempt.** A topic's "average score" is computed by first averaging each user's own attempts, then averaging those per-user averages — so someone who retakes a quiz repeatedly doesn't skew the topic average more than someone who took it once.
+- **Completion is "average % of a topic's lessons completed," not "% of users who did ≥1 lesson."** With 10 lessons per topic, "at least one" is too low a bar to be meaningful; average % completion (counting a user who never touched a topic as 0%) says more about actual engagement depth.
+- **Small-sample suppression.** Before this was built, we identified a real leak: a topic touched by only 1–2 users would make that topic's "average" effectively reveal that individual's exact score or completion. Any per-topic number backed by fewer than `minSampleSize` (5) contributing users comes back as `null` and renders as a grey bar with a "not enough data" tooltip instead of a real value — the contributing-user count is always shown alongside so an admin can see why. Signup counts and feedback totals aren't suppressed the same way, because `/admin/users` and `/admin/feedback` already expose that same information per-individual to admins; the per-topic quiz/completion numbers are the only aggregates here with no existing per-user view backing them.
 
 ### Account isolation on shared browsers
 

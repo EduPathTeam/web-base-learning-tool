@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth.js';
 import { progressRouter } from './routes/progress.js';
 import { feedbackRouter } from './routes/feedback.js';
 import { usersRouter } from './routes/users.js';
+import { analyticsRouter } from './routes/analytics.js';
 
 const MySQLStore = MySQLStoreFactory(session);
 const isProduction = process.env.NODE_ENV === 'production';
@@ -132,6 +133,7 @@ export function createApp() {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/progress', progressRouter);
   app.use('/api/v1/users', usersRouter);
+  app.use('/api/v1/analytics', analyticsRouter);
   // Scoped to POST only (not app.use) so the rate limiter doesn't also
   // throttle the admin GET /feedback listing route.
   app.post('/api/v1/feedback', feedbackLimiter);
