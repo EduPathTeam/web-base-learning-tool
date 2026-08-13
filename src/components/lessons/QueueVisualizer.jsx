@@ -1,16 +1,27 @@
 import { useState } from 'react';
+import InlinePrompt from './InlinePrompt';
 
 export default function QueueVisualizer() {
   const [data, setData] = useState([10, 20, 30, 40]);
   const [status, setStatus] = useState(' ');
+  const [prompt, setPrompt] = useState(null);
+
+  function closePrompt() {
+    setPrompt(null);
+  }
 
   function handleAction(action) {
     if (action === 'enqueue') {
-      const raw = window.prompt('Enter a value to enqueue (add to the rear):');
-      if (raw === null || raw.trim() === '') return;
-      const value = isNaN(Number(raw)) ? raw.trim() : Number(raw);
-      setData([...data, value]);
-      setStatus(`Enqueued ${value} at the rear.`);
+      setPrompt({
+        label: 'Value to enqueue (add to the rear)',
+        placeholder: 'e.g. 25',
+        onConfirm: (raw) => {
+          const value = isNaN(Number(raw)) ? raw : Number(raw);
+          setData([...data, value]);
+          setStatus(`Enqueued ${value} at the rear.`);
+          closePrompt();
+        },
+      });
     } else if (action === 'dequeue') {
       if (data.length === 0) { setStatus('The queue is already empty.'); return; }
       const [removed, ...rest] = data;
@@ -44,11 +55,12 @@ export default function QueueVisualizer() {
       </div>
 
       <div className="array-actions">
-        <button className="btn array-action-btn" onClick={() => handleAction('enqueue')}><i className="bi bi-plus-lg"></i> Enqueue</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('dequeue')}><i className="bi bi-dash-lg"></i> Dequeue</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('peek')}><i className="bi bi-eye"></i> Peek</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('isEmpty')}><i className="bi bi-question-circle"></i> Is Empty</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('enqueue')}><i className="bi bi-plus-lg"></i> Enqueue</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('dequeue')}><i className="bi bi-dash-lg"></i> Dequeue</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('peek')}><i className="bi bi-eye"></i> Peek</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('isEmpty')}><i className="bi bi-question-circle"></i> Is Empty</button>
       </div>
+      {prompt && <InlinePrompt {...prompt} onCancel={closePrompt} />}
       <p className="array-status">{status}</p>
     </section>
   );

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import InlinePrompt from './InlinePrompt';
 
 function insertBST(root, value) {
   if (!root) return { value, left: null, right: null };
@@ -38,6 +39,17 @@ export default function TreeVisualizer() {
   const [root, setRoot] = useState(() => [50, 30, 70, 20, 40, 60, 80].reduce(insertBST, null));
   const [status, setStatus] = useState(' ');
   const [highlightPath, setHighlightPath] = useState([]);
+  const [prompt, setPrompt] = useState(null);
+
+  function closePrompt() {
+    setPrompt(null);
+  }
+
+  function numericValidate(raw) {
+    if (raw === '') return 'Please enter a value.';
+    if (isNaN(Number(raw))) return 'Please enter a numeric value.';
+    return '';
+  }
 
   const { nodes, edges } = useMemo(() => layout(root), [root]);
   const nodeByValue = useMemo(() => Object.fromEntries(nodes.map((n) => [n.value, n])), [nodes]);
@@ -49,25 +61,37 @@ export default function TreeVisualizer() {
 
   function handleAction(action) {
     if (action === 'insert') {
-      const raw = window.prompt('Enter a value to insert:');
-      if (raw === null || raw.trim() === '' || isNaN(Number(raw))) return;
-      const value = Number(raw);
-      setRoot((r) => insertBST(r, value));
-      setHighlightPath([]);
-      setStatus(`Inserted ${value}.`);
+      setPrompt({
+        label: 'Value to insert',
+        placeholder: 'e.g. 45',
+        validate: numericValidate,
+        onConfirm: (raw) => {
+          const value = Number(raw);
+          setRoot((r) => insertBST(r, value));
+          setHighlightPath([]);
+          setStatus(`Inserted ${value}.`);
+          closePrompt();
+        },
+      });
     } else if (action === 'search') {
-      const raw = window.prompt('Enter a value to search for:');
-      if (raw === null || raw.trim() === '' || isNaN(Number(raw))) return;
-      const value = Number(raw);
-      const path = findPath(root, value);
-      if (path) {
-        setHighlightPath(path);
-        setStatus(`Found ${value} after visiting: ${path.join(' → ')}.`);
-        setTimeout(() => setHighlightPath([]), 1800);
-      } else {
-        setHighlightPath([]);
-        setStatus(`${value} was not found in the tree.`);
-      }
+      setPrompt({
+        label: 'Value to search for',
+        placeholder: 'e.g. 45',
+        validate: numericValidate,
+        onConfirm: (raw) => {
+          const value = Number(raw);
+          const path = findPath(root, value);
+          if (path) {
+            setHighlightPath(path);
+            setStatus(`Found ${value} after visiting: ${path.join(' → ')}.`);
+            setTimeout(() => setHighlightPath([]), 1800);
+          } else {
+            setHighlightPath([]);
+            setStatus(`${value} was not found in the tree.`);
+          }
+          closePrompt();
+        },
+      });
     } else if (action === 'reset') {
       setRoot([50, 30, 70, 20, 40, 60, 80].reduce(insertBST, null));
       setHighlightPath([]);
@@ -110,10 +134,11 @@ export default function TreeVisualizer() {
       </div>
 
       <div className="array-actions">
-        <button className="btn array-action-btn" onClick={() => handleAction('insert')}><i className="bi bi-plus-lg"></i> Insert</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('search')}><i className="bi bi-search"></i> Search</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('reset')}><i className="bi bi-arrow-counterclockwise"></i> Reset</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('insert')}><i className="bi bi-plus-lg"></i> Insert</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('search')}><i className="bi bi-search"></i> Search</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('reset')}><i className="bi bi-arrow-counterclockwise"></i> Reset</button>
       </div>
+      {prompt && <InlinePrompt {...prompt} onCancel={closePrompt} />}
       <p className="array-status">{status}</p>
     </section>
   );

@@ -1,16 +1,27 @@
 import { useState } from 'react';
+import InlinePrompt from './InlinePrompt';
 
 export default function StackVisualizer() {
   const [data, setData] = useState([10, 20, 30]); // last item = top
   const [status, setStatus] = useState(' ');
+  const [prompt, setPrompt] = useState(null);
+
+  function closePrompt() {
+    setPrompt(null);
+  }
 
   function handleAction(action) {
     if (action === 'push') {
-      const raw = window.prompt('Enter a value to push onto the stack:');
-      if (raw === null || raw.trim() === '') return;
-      const value = isNaN(Number(raw)) ? raw.trim() : Number(raw);
-      setData([...data, value]);
-      setStatus(`Pushed ${value} onto the top.`);
+      setPrompt({
+        label: 'Value to push onto the stack',
+        placeholder: 'e.g. 25',
+        onConfirm: (raw) => {
+          const value = isNaN(Number(raw)) ? raw : Number(raw);
+          setData([...data, value]);
+          setStatus(`Pushed ${value} onto the top.`);
+          closePrompt();
+        },
+      });
     } else if (action === 'pop') {
       if (data.length === 0) { setStatus('The stack is already empty.'); return; }
       const removed = data[data.length - 1];
@@ -39,11 +50,12 @@ export default function StackVisualizer() {
       </div>
 
       <div className="array-actions">
-        <button className="btn array-action-btn" onClick={() => handleAction('push')}><i className="bi bi-plus-lg"></i> Push</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('pop')}><i className="bi bi-dash-lg"></i> Pop</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('peek')}><i className="bi bi-eye"></i> Peek</button>
-        <button className="btn array-action-btn" onClick={() => handleAction('isEmpty')}><i className="bi bi-question-circle"></i> Is Empty</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('push')}><i className="bi bi-plus-lg"></i> Push</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('pop')}><i className="bi bi-dash-lg"></i> Pop</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('peek')}><i className="bi bi-eye"></i> Peek</button>
+        <button className="btn array-action-btn" disabled={!!prompt} onClick={() => handleAction('isEmpty')}><i className="bi bi-question-circle"></i> Is Empty</button>
       </div>
+      {prompt && <InlinePrompt {...prompt} onCancel={closePrompt} />}
       <p className="array-status">{status}</p>
     </section>
   );
