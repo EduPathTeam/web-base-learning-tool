@@ -49,6 +49,7 @@ export default function ResetPassword() {
       <div className="auth-page">
         <div className="auth-card">
           <Link to="/" className="auth-logo">
+            <img src="/images/icon.png" alt="" width="28" height="28" className="auth-logo-icon" />
             Edu<span>Path</span>
           </Link>
           <h1 className="auth-title">Password Updated</h1>
@@ -70,6 +71,7 @@ export default function ResetPassword() {
           <i className="bi bi-arrow-left"></i> Back
         </button>
         <Link to="/" className="auth-logo">
+          <img src="/images/icon.png" alt="" width="28" height="28" className="auth-logo-icon" />
           Edu<span>Path</span>
         </Link>
         <h1 className="auth-title">Reset Password</h1>

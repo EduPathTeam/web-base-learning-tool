@@ -129,3 +129,11 @@ body {
   background: var(--border-soft, #e6e9f5);
   margin: 4px 2px;
 }
+
+/* Header logo icon (icon.png, matching Footer.jsx's existing treatment).
+   .logo itself becomes a flex container in each page stylesheet below so
+   the icon and "EduPath" text line up. */
+.logo-icon {
+  border-radius: 8px;
+  flex-shrink: 0;
+}

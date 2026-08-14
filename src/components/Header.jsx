@@ -70,6 +70,7 @@ export default function Header({ navSection }) {
     <header className={`header${scrolled ? ' scrolled' : ''}`} id="header">
       <div className="header-inner">
         <Link to="/" className="logo">
+          <img src="/images/icon.png" alt="" width="30" height="30" className="logo-icon" />
           Edu<span className="logo-span">Path</span>
         </Link>
 

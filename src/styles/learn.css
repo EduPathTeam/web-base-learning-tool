@@ -49,6 +49,9 @@
 
 /* ---------- Logo ---------- */
 .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: 'Courier New', Courier, monospace;
   font-size: 20px;
   letter-spacing: 0;
