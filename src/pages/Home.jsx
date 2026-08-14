@@ -10,12 +10,16 @@ import '../styles/home.css';
 // only). The other cards stay in the carousel for visual completeness but
 // are clearly marked "Coming soon" rather than linking to content that
 // doesn't exist, so the carousel never makes a promise it can't keep.
+// Real per-language brand marks (Font Awesome Brands, already loaded via
+// CDN in index.html) instead of generic/punny Bootstrap icons (e.g. Java
+// was a coffee cup). Data Structure & Algorithm and Database aren't
+// specific languages, so they keep a plain Bootstrap icon.
 const COURSES = [
-  { title: 'Data Structure & Algorithm', icon: 'bi-diagram-3', color: '#8B5CF6', to: '/learn' },
-  { title: 'Python', icon: 'bi-filetype-py', color: '#63B3ED', to: null },
-  { title: 'Java', icon: 'bi-cup-hot', color: '#E9A23B', to: null },
-  { title: 'HTML & CSS', icon: 'bi-code-slash', color: '#F0653D', to: null },
-  { title: 'Database', icon: 'bi-hdd-stack', color: '#374151', to: null },
+  { title: 'Data Structure & Algorithm', icon: 'bi bi-diagram-3', color: '#8B5CF6', to: '/learn' },
+  { title: 'Python', icon: 'fa-brands fa-python', color: '#63B3ED', to: null },
+  { title: 'Java', icon: 'fa-brands fa-java', color: '#E9A23B', to: null },
+  { title: 'HTML & CSS', icon: 'fa-brands fa-html5', color: '#F0653D', to: null },
+  { title: 'Database', icon: 'bi bi-hdd-stack', color: '#374151', to: null },
 ];
 
 // How many cards to show at once, by breakpoint — matches the CSS
@@ -135,7 +139,7 @@ export default function Home() {
                         onKeyDown={(e) => handleCardKeyDown(e, c, i)}
                       >
                         <div className="icon-wrap" style={{ background: c.color }}>
-                          <i className={`bi ${c.icon}`}></i>
+                          <i className={c.icon}></i>
                         </div>
                         <div className="title">{c.title}</div>
                         {isCentered && (
