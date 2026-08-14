@@ -103,6 +103,12 @@
 @media (min-width: 768px) {
   .nav {
     display: flex;
+    /* .nav collides with Bootstrap's own .nav component class, which
+       ships flex-wrap: wrap. Below ~900px the nav links + sign-out
+       button don't fit on one line, so the inherited wrap drops the
+       sign-out button onto a second row directly under the JS-
+       positioned .active-pill, which is sized for a single-line nav. */
+    flex-wrap: nowrap;
   }
 }
 .nav a {

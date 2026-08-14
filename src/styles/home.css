@@ -678,6 +678,10 @@ h4 {
 @media (min-width: 768px) {
   .nav {
     display: flex;
+    /* .nav collides with Bootstrap's own .nav component class, which
+       ships flex-wrap: wrap — override it so the sign-out button never
+       wraps onto a second row under the JS-positioned .active-pill. */
+    flex-wrap: nowrap;
   }
 }
 .nav a {
