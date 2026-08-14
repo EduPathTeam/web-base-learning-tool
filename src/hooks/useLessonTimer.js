@@ -11,10 +11,18 @@ import { addLearningMinutes } from '../lib/csPlatform.js';
 // so leaving a lesson open in a background tab doesn't inflate the stat.
 export default function useLessonTimer(topicId) {
   const accumulatedMs = useRef(0);
-  const visibleSinceRef = useRef(document.visibilityState === 'visible' ? Date.now() : null);
+  const visibleSinceRef = useRef(null);
 
   useEffect(() => {
     if (!topicId) return;
+
+    // Reset on every effect run, not just once at component creation —
+    // React 18 StrictMode's dev-only double-invoke (mount -> cleanup ->
+    // mount) otherwise leaves visibleSinceRef null after its synthetic
+    // first cleanup, since nothing re-set it on the second mount, and
+    // then silently drops all real time logged for the rest of the visit.
+    accumulatedMs.current = 0;
+    visibleSinceRef.current = document.visibilityState === 'visible' ? Date.now() : null;
 
     function flush() {
       if (visibleSinceRef.current !== null) {

@@ -118,7 +118,10 @@ export default function Dashboard() {
     const values = pieTopics.map(
       (t) => Math.round(((data.learningTimeMinutes[t.id] || 0) / 60) * 10) / 10
     );
-    const hasData = values.some((v) => v > 0);
+    // Checked against the raw minutes, not the rounded-to-0.1h display
+    // values — otherwise a few real minutes of logged time (rounds to
+    // 0.0h) would incorrectly look like no data at all.
+    const hasData = pieTopics.some((t) => (data.learningTimeMinutes[t.id] || 0) > 0);
     if (pieChartRef.current) {
       pieChartRef.current.destroy();
       pieChartRef.current = null;
@@ -156,7 +159,7 @@ export default function Dashboard() {
     (t) => Math.round(((data.learningTimeMinutes[t.id] || 0) / 60) * 10) / 10
   );
   const pieColors = pieTopics.map((t) => TIME_COLORS[t.id]);
-  const pieHasData = pieValues.some((v) => v > 0);
+  const pieHasData = pieTopics.some((t) => (data.learningTimeMinutes[t.id] || 0) > 0);
 
   return (
     <div className="page-shell">
