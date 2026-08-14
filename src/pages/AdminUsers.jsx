@@ -122,11 +122,7 @@ export default function AdminUsers() {
       <div className="page-shell-main">
         <div className="container section-pad">
           <h1>User Management</h1>
-          <p>
-            {result ? `${result.total} account${result.total === 1 ? '' : 's'}` : ' '} &middot;{' '}
-            <Link to="/admin/feedback">View Feedback Submissions</Link> &middot;{' '}
-            <Link to="/admin/analytics">Platform Analytics</Link>
-          </p>
+          <p>{result ? `${result.total} account${result.total === 1 ? '' : 's'}` : ' '}</p>
 
           {error && <p style={{ color: '#e0525f' }}>{error}</p>}
           {actionError && (

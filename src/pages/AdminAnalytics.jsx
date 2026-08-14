@@ -250,11 +250,7 @@ export default function AdminAnalytics() {
       <div className="page-shell-main">
         <div className="container section-pad">
           <h1>Platform Analytics</h1>
-          <p>
-            Read-only, aggregate data across every account. &middot;{' '}
-            <Link to="/admin/users">Manage Users</Link> &middot;{' '}
-            <Link to="/admin/feedback">View Feedback Submissions</Link>
-          </p>
+          <p>Read-only, aggregate data across every account.</p>
 
           {error && <p style={{ color: '#e0525f' }}>{error}</p>}
           {loading && !data && <p>Loading…</p>}

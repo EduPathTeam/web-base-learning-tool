@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import UserMenu from './UserMenu';
 
 // React port of learn-common.js's header/nav-pill/burger behavior.
 // Same markup/classes as the static site's header so array.css/learn.css
@@ -23,6 +24,7 @@ export default function Header({ navSection }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   function handleSignOut() {
     logout();
@@ -90,14 +92,7 @@ export default function Header({ navSection }) {
             </Link>
           ))}
           {user ? (
-            <button
-              type="button"
-              className="login-icon"
-              onClick={handleSignOut}
-              style={{ border: 'none', background: 'none', cursor: 'pointer' }}
-            >
-              <i className="bi bi-person-check-fill"></i> {user.displayName} · Sign Out
-            </button>
+            <UserMenu user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
           ) : (
             <Link to="/sign-in" className="login-icon">
               <i className="bi bi-box-arrow-in-right"></i> Sign In
@@ -132,17 +127,13 @@ export default function Header({ navSection }) {
             </Link>
           ))}
           {user ? (
-            <button
-              type="button"
-              className="login-icon"
-              onClick={() => {
-                setMobileOpen(false);
-                handleSignOut();
-              }}
-              style={{ border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="bi bi-person-check-fill"></i> {user.displayName} · Sign Out
-            </button>
+            <UserMenu
+              user={user}
+              isAdmin={isAdmin}
+              onSignOut={handleSignOut}
+              onItemClick={() => setMobileOpen(false)}
+              inline
+            />
           ) : (
             <Link to="/sign-in" className="login-icon" onClick={() => setMobileOpen(false)}>
               <i className="bi bi-box-arrow-in-right"></i> Sign In

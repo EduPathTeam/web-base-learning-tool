@@ -254,7 +254,12 @@ body {
     border-color 0.3s ease;
 }
 .mobile-nav.open {
-  max-height: 400px;
+  /* Was a fixed 400px — too short once the signed-in user menu can expand
+     inline (admin adds 3 extra items), which got silently clipped by
+     this container's overflow: hidden. min() keeps a generous cap while
+     never exceeding the viewport; overflow-y is the safety net beyond that. */
+  max-height: min(560px, calc(100vh - 100px));
+  overflow-y: auto;
   opacity: 1;
   border-top-color: var(--border);
 }
