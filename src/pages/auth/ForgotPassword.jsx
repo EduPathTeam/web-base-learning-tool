@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/auth.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Calls the real /auth/forgot-password endpoint and shows exactly what it
-// says. There's no email provider configured yet, so the actual reset
-// link is only logged to the server console (dev-only stand-in) rather
-// than emailed — see server/src/routes/auth.js and README.md.
+// says. The reset link is emailed via Resend (see server/src/lib/email.js)
+// rather than shown here.
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +15,7 @@ export default function ForgotPassword() {
   const [submitting, setSubmitting] = useState(false);
 
   const { requestPasswordReset } = useAuth();
+  const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -41,6 +41,9 @@ export default function ForgotPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <button type="button" className="auth-back-link" onClick={() => navigate(-1)}>
+          <i className="bi bi-arrow-left"></i> Back
+        </button>
         <Link to="/" className="auth-logo">
           Edu<span>Path</span>
         </Link>

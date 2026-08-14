@@ -186,10 +186,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--auth-gray);
   text-decoration: none;
+  cursor: pointer;
   margin-bottom: 18px;
 }
 .auth-back-link:hover {

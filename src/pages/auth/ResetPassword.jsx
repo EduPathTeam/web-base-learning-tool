@@ -4,9 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import '../../styles/auth.css';
 
 // Reads the token from the reset link's ?token= query param (the link
-// server/src/routes/auth.js logs to the console — there's no email
-// provider configured yet, see README.md) and submits it with a new
-// password to /auth/reset-password.
+// server/src/routes/auth.js emails via Resend — see server/src/lib/email.js)
+// and submits it with a new password to /auth/reset-password.
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
@@ -67,6 +66,9 @@ export default function ResetPassword() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <button type="button" className="auth-back-link" onClick={() => navigate(-1)}>
+          <i className="bi bi-arrow-left"></i> Back
+        </button>
         <Link to="/" className="auth-logo">
           Edu<span>Path</span>
         </Link>

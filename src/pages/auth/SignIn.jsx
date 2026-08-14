@@ -37,6 +37,9 @@ export default function SignIn() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <button type="button" className="auth-back-link" onClick={() => navigate(-1)}>
+          <i className="bi bi-arrow-left"></i> Back
+        </button>
         <Link to="/" className="auth-logo">
           Edu<span>Path</span>
         </Link>
