@@ -56,6 +56,14 @@ export function createApp() {
       cookie: {
         httpOnly: true,
         secure: isProduction,
+        // Vercel (frontend) and Railway (backend) are different domains —
+        // genuinely cross-site, not just cross-port-same-site like local
+        // dev. SameSite=Lax (the default when unset) is not sent on
+        // cross-site fetch(), only on top-level navigations, so without
+        // this the session cookie silently never makes it back to the
+        // server and every request looks logged-out. None requires
+        // Secure, which isProduction already sets.
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       },
     })
@@ -73,7 +81,10 @@ export function createApp() {
     getSessionIdentifier: (req) => req.session.id,
     cookieName: 'csrf-token',
     cookieOptions: {
-      sameSite: 'lax',
+      // Same cross-site reasoning as the session cookie above — without
+      // this, the CSRF cookie never reaches the server either, and every
+      // POST/PATCH/DELETE fails with 403 EBADCSRFTOKEN.
+      sameSite: isProduction ? 'none' : 'lax',
       secure: isProduction,
       httpOnly: true,
     },
