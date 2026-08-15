@@ -108,6 +108,12 @@ export function createApp() {
   app.locals.generateCsrfToken = generateCsrfToken;
 
   app.get('/api/v1/csrf-token', (req, res) => {
+    // Skip session creation on this endpoint: CSRF is now stateless, so it
+    // doesn't need a session ID. Preventing session creation here means only
+    // the CSRF cookie is set (1 Set-Cookie header), not 2 (session + CSRF),
+    // which Vercel's proxy was dropping. Session is created on first POST
+    // (login/register) instead.
+    delete req.session;
     res.json({ csrfToken: generateCsrfToken(req, res) });
   });
 
