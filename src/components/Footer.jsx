@@ -33,55 +33,30 @@ export default function Footer() {
           <div className="col-6 col-lg-3">
             <h6>Platform</h6>
             <ul>
-              <li>
-                <Link to="/">Home</Link>
-              </li>
-              <li>
-                <Link to="/learn">Learn DSA</Link>
-              </li>
-              <li>
-                <Link to="/quiz">Take quiz</Link>
-              </li>
-              <li>
-                <Link to="/dashboard">Dashboard</Link>
-              </li>
+              <li><Link to="/">Home</Link></li>
+              <li><Link to="/learn">Learn DSA</Link></li>
+              <li><Link to="/quiz">Take quiz</Link></li>
+              <li><Link to="/dashboard">Dashboard</Link></li>
+              <li><Link to="/about">About</Link></li>
             </ul>
           </div>
           <div className="col-6 col-lg-3">
             <h6>Resources</h6>
             <ul>
-              <li>
-                <a href="#">Major information</a>
-              </li>
-              <li>
-                <a href="#">Career paths</a>
-              </li>
-              <li>
-                <a href="#">Learning materials</a>
-              </li>
-              <li>
-                <a href="#">Practice problem</a>
-              </li>
+
+              <li><Link to="/learn">Learning Topics</Link></li>
+              <li><Link to="/quiz">Practice Quizzes</Link></li>
+              <li><Link to="/dashboard">Progress Tracking</Link></li>
+              <li><Link to="/about">About EduPath</Link></li>
             </ul>
           </div>
           <div className="col-6 col-lg-3">
             <h6>Support</h6>
             <ul>
-              <li>
-                <a href="#">FeedBack</a>
-              </li>
-              <li>
-                <a href="#">Help Centers</a>
-              </li>
-              <li>
-                <a href="#">Privacy Policy</a>
-              </li>
-              <li>
-                <a href="#">Terms of Service</a>
-              </li>
-              <li>
-                <a href="#">Community</a>
-              </li>
+              <li><Link to="/about">Contact Us</Link></li>
+              <li><Link to="/about">Help Center</Link></li>
+              <li><Link to="/about">Project Information</Link></li>
+              <li><Link to="/about">Team Members</Link></li>
             </ul>
           </div>
         </div>

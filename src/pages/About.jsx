@@ -221,38 +221,32 @@ export default function About() {
           </div>
         </section>
 
-        <section className="section-pad pt-0">
-          <div className="container">
-            <div className="team-card reveal visible">
-              <h4 className="mb-4">Meet Our Team</h4>
-              <div className="row gy-3">
-                <div className="col-4 team-member">
-                  <div className="avatar-circle">MH</div>
-                  <h6>Chey Menghout</h6>
-                  <div className="role">Founder &amp; Lead Developer</div>
-                  <div className="desc">
-                    Computer Science student passionate about making DSA interesting
-                  </div>
-                </div>
-                <div className="col-4 team-member">
-                  <div className="avatar-circle">SJ</div>
-                  <h6>Chhantha Sreyneang</h6>
-                  <div className="role">Founder &amp; Lead Developer</div>
-                  <div className="desc">
-                    Focused on designing engaging, well-structured lesson content
-                  </div>
-                </div>
-                <div className="col-4 team-member">
-                  <div className="avatar-circle">ML</div>
-                  <h6>Chang Minhlaing</h6>
-                  <div className="role">UX Designer</div>
-                  <div className="desc">
-                    Designing an intuitive learning experience for students
-                  </div>
-                </div>
+      <section className="section-pad pt-0">
+        <div className="container">
+          <div className="team-card reveal visible">
+            <h4 className="mb-4">Meet Our Team</h4>
+            <div className="row gy-3">
+              <div className="col-4 team-member">
+                <div className="avatar-circle">CM</div>
+                <h6>Chantha Sreyneang</h6>
+                <div className="role">Frontend Developer</div>
+                <div className="desc">Focused on building responsive, user-friendly interfaces and delivering seamless user experiences.</div>
+              </div>
+              <div className="col-4 team-member">
+                <div className="avatar-circle">CS</div>
+                <h6>Chey Menghout</h6>
+                <div className="role">Backend Developer</div>
+                <div className="desc">Responsible for developing secure, scalable backend systems and managing application data flow.</div>
+              </div>
+              <div className="col-4 team-member">
+                <div className="avatar-circle">ML</div>
+                <h6>Chang Minhlaing</h6>
+                <div className="role">UX/UI Designer</div>
+                <div className="desc">Designing intuitive and visually engaging user experiences that enhance learning and accessibility.</div>
               </div>
             </div>
           </div>
+        </div>
         </section>
 
         <section className="stand-for-section section-pad">
