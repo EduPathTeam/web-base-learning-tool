@@ -1,6 +1,6 @@
 // Thin fetch wrapper for the server/ Express API. Always sends the session
 // cookie (credentials: 'include') so express-session recognizes the caller.
-const API_BASE = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+const API_BASE = import.meta.env?.VITE_API_BASE_URL || 'https://web-base-learning-tool-production.up.railway.app/api/v1/';
 
 // The backend requires an x-csrf-token header on every state-changing
 // request (see server/src/app.js's doubleCsrfProtection). The token is
