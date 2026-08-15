@@ -91,7 +91,7 @@ export function createApp() {
     getSessionIdentifier: (req) => req.session.id,
     cookieName: 'csrf-token',
     cookieOptions: {
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       secure: isProduction,
       httpOnly: true,
     },
