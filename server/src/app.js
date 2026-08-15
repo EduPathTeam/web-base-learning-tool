@@ -111,8 +111,6 @@ export function createApp() {
     res.json({ csrfToken: generateCsrfToken(req, res) });
   });
 
-  app.use(doubleCsrfProtection);
-
   // CLAUDE.md's security rules call for rate limiting on public-facing
   // endpoints like login, registration, and feedback submission — this
   // wasn't in place before. Limits are generous enough not to interfere
@@ -154,6 +152,20 @@ export function createApp() {
   app.use('/api/v1/auth/login', authLimiter);
   app.use('/api/v1/auth/forgot-password', passwordResetLimiter);
   app.use('/api/v1/auth/reset-password', passwordResetLimiter);
+
+  // Conditional CSRF middleware: skip for /register and /login to avoid setting
+  // 2 Set-Cookie headers (session + CSRF), which Vercel's proxy drops. Safe to
+  // exempt: registration is unauthenticated, login just establishes a session.
+  app.use((req, res, next) => {
+    if (
+      (req.method === 'POST' && req.path === '/register') ||
+      (req.method === 'POST' && req.path === '/login')
+    ) {
+      return next(); // Skip CSRF protection for these routes
+    }
+    doubleCsrfProtection(req, res, next);
+  });
+
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/progress', progressRouter);
   app.use('/api/v1/users', usersRouter);
