@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { apiGet, apiPost } from '../lib/apiClient';
+import { apiGet, apiPost, apiPatch } from '../lib/apiClient';
 import { setCurrentUser } from '../lib/authState';
 import { syncFromServer } from '../lib/csPlatform';
 
@@ -27,7 +27,9 @@ export function AuthProvider({ children }) {
     const me = await apiPost('/auth/login', { email, password });
     setUser(me);
     setCurrentUser(me);
-    await syncFromServer().catch((err) => console.warn('Progress sync after login failed:', err.message));
+    await syncFromServer().catch((err) =>
+      console.warn('Progress sync after login failed:', err.message)
+    );
     return me;
   }, []);
 
@@ -44,16 +46,38 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
   }, []);
 
-  // Returns the server's message (an honest "this isn't automated yet"
-  // notice — see server/src/routes/auth.js) rather than pretending an
-  // email was sent.
+  // Returns the server's message. The response is intentionally identical
+  // whether or not the email is registered (see server/src/routes/auth.js)
+  // so this can't be used to enumerate accounts.
   const requestPasswordReset = useCallback(async (email) => {
     const res = await apiPost('/auth/forgot-password', { email });
     return res.message;
   }, []);
 
+  const resetPassword = useCallback(async (token, password) => {
+    await apiPost('/auth/reset-password', { token, password });
+  }, []);
+
+  const updateProfile = useCallback(async (displayName) => {
+    const me = await apiPatch('/auth/me', { displayName });
+    setUser(me);
+    setCurrentUser(me);
+    return me;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, requestPasswordReset }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        requestPasswordReset,
+        resetPassword,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

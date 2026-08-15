@@ -5,7 +5,9 @@ import { useEffect } from 'react';
 // their own copy of this — one hook now covers all of them).
 export default function useScrollReveal(deps = []) {
   useEffect(() => {
-    const targets = document.querySelectorAll('.fade-in:not(.visible), .reveal-on-scroll:not(.is-visible)');
+    const targets = document.querySelectorAll(
+      '.fade-in:not(.visible), .reveal-on-scroll:not(.is-visible)'
+    );
     if (!('IntersectionObserver' in window)) {
       targets.forEach((el) => el.classList.add('visible', 'is-visible'));
       return;

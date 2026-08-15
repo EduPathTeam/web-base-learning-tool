@@ -2,14 +2,19 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Learn from './pages/Learn';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import ComingSoon from './pages/ComingSoon';
 import QuizHub from './pages/QuizHub';
 import QuizPage from './pages/QuizPage';
-import SignIn from './pages/SignIn';
-import SignUp from './pages/SignUp';
-import ForgotPassword from './pages/ForgotPassword';
+import SignIn from './pages/auth/SignIn';
+import SignUp from './pages/auth/SignUp';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import About from './pages/About';
 import Feedback from './pages/Feedback';
+import AdminFeedback from './pages/AdminFeedback';
+import AdminUsers from './pages/AdminUsers';
+import AdminAnalytics from './pages/AdminAnalytics';
 import ArrayLesson from './pages/lessons/ArrayLesson';
 import LinkedListLesson from './pages/lessons/LinkedListLesson';
 import QueueLesson from './pages/lessons/QueueLesson';
@@ -41,13 +46,18 @@ export default function App() {
       <Route path="/learn/greedy" element={<GreedyLesson />} />
       <Route path="/learn/big-o" element={<BigOLesson />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/profile" element={<Profile />} />
       <Route path="/quiz" element={<QuizHub />} />
       <Route path="/quiz/:topicId" element={<QuizPage />} />
       <Route path="/about" element={<About />} />
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/sign-up" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/feedback" element={<Feedback />} />
+      <Route path="/admin/feedback" element={<AdminFeedback />} />
+      <Route path="/admin/users" element={<AdminUsers />} />
+      <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route path="*" element={<ComingSoon title="Page not found" />} />
     </Routes>
   );

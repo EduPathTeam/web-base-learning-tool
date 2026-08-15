@@ -7,13 +7,54 @@
 // Run with: npm test  (from server/)
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
+import { isLastActiveAdmin } from '../src/routes/users.js';
+import { suppressBelowMinSample, lastNMonths, MIN_SAMPLE_SIZE } from '../src/routes/analytics.js';
+import { emailer } from '../src/lib/email.js';
 
+// The real emailer sends real emails via Resend — replace it with an
+// in-memory recorder so this suite never sends anything real, while still
+// exercising the forgot-password route's call-or-don't-call-it logic.
+const sentEmails = [];
+emailer.send = async (to, resetUrl) => {
+  sentEmails.push({ to, resetUrl });
+};
+
+let app;
 let server;
 let baseUrl;
 const testEmail = `test-${Date.now()}@example.com`;
 const testPassword = 'password123';
+const resetEmail = `reset-test-${Date.now()}@example.com`;
+const resetPassword = 'password123';
+let resetUserId;
+const adminEmail = `admin-test-${Date.now()}@example.com`;
+const nonAdminEmail = `nonadmin-test-${Date.now()}@example.com`;
+const testUserPassword = 'password123';
+let adminCookie;
+let nonAdminCookie;
+
+// Dedicated group for the /api/v1/users tests: a second, independent
+// admin (so demote/deactivate "happy path" tests don't touch adminEmail
+// or nonAdminEmail, which other tests already depend on staying as they
+// are), a target admin account for it to act on, and a separate account
+// for the deactivation/session-revocation tests.
+const userMgmtAdminEmail = `usermgmt-admin-${Date.now()}@example.com`;
+const userMgmtTargetEmail = `usermgmt-target-${Date.now()}@example.com`;
+const deactivateTestEmail = `deactivate-test-${Date.now()}@example.com`;
+const loginBlockedEmail = `login-blocked-${Date.now()}@example.com`;
+let userMgmtAdminId;
+let userMgmtAdminCookie;
+let userMgmtTargetId;
+let deactivateTestId;
+let deactivateTestCookie;
+let loginBlockedId;
+
+function hashResetToken(rawToken) {
+  return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
 
 function extractCookie(res) {
   const raw = res.headers.get('set-cookie');
@@ -21,12 +62,47 @@ function extractCookie(res) {
   return raw.split(';')[0];
 }
 
-async function api(path, { method = 'GET', body, cookie } = {}) {
+// Node's fetch Headers.get('set-cookie') collapses multiple Set-Cookie
+// headers into one (per the Fetch spec), which breaks whenever a single
+// response sets more than one cookie — as /csrf-token now does, since
+// saveUninitialized:true means it also sets the session cookie. Use
+// getSetCookie() (Node 18.14+/undici) to read the named one directly.
+function extractCookieNamed(res, name) {
+  const all = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+  const match = all.find((c) => c.startsWith(`${name}=`));
+  return match ? match.split(';')[0] : null;
+}
+
+// Every state-changing route now requires an x-csrf-token header matching
+// the double-submit cookie (server/src/app.js), and that cookie's HMAC is
+// bound to the *session id* that was active when the token was issued —
+// so the same session cookie has to travel alongside it on every request,
+// exactly like a real browser does automatically via credentials:
+// 'include'. `sessionCookie` starts as the anonymous session established
+// by the initial csrf-token fetch and is reassigned after register/login
+// (see below); api() sends whichever value it currently holds unless a
+// call explicitly overrides it.
+let csrfCookie;
+let csrfToken;
+let sessionCookie;
+
+async function fetchCsrfToken() {
+  const res = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  csrfCookie = extractCookieNamed(res, 'csrf-token');
+  sessionCookie = extractCookieNamed(res, 'connect.sid');
+  const data = await res.json();
+  csrfToken = data.csrfToken;
+}
+
+async function api(path, { method = 'GET', body, cookie, omitCsrf = false } = {}) {
+  const effectiveCookie = cookie !== undefined ? cookie : sessionCookie;
+  const cookieHeader = [effectiveCookie, !omitCsrf ? csrfCookie : null].filter(Boolean).join('; ');
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(cookie ? { Cookie: cookie } : {}),
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      ...(method !== 'GET' && !omitCsrf ? { 'x-csrf-token': csrfToken } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -35,16 +111,142 @@ async function api(path, { method = 'GET', body, cookie } = {}) {
   return { status: res.status, data, cookie: extractCookie(res) };
 }
 
+// Registers a user with its own isolated session/CSRF pairing, so it
+// doesn't touch (or get touched by) the shared module-level session state
+// that most of the suite relies on. Returns the new user's id and session
+// cookie so callers can act as that user in later requests.
+async function registerIsolatedUser(email, password, displayName) {
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const setupCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: setupToken } = await tokenRes.json();
+  const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: setupCookie,
+      'x-csrf-token': setupToken,
+    },
+    body: JSON.stringify({ email, password, displayName }),
+  });
+  const data = await res.json();
+  const cookie =
+    extractCookieNamed(res, 'connect.sid') || extractCookieNamed(tokenRes, 'connect.sid');
+  return { id: data.id, cookie };
+}
+
+// Fetches a fresh CSRF cookie/token pair bound to an *existing* session
+// cookie (rather than a brand-new anonymous one) — needed for the
+// dedicated per-test-group cookies below, since registerIsolatedUser()
+// only returns the session cookie, not the CSRF pairing it used during
+// registration.
+async function fetchCsrfFor(sessionCookieValue) {
+  const res = await fetch(`${baseUrl}/api/v1/csrf-token`, {
+    headers: { Cookie: sessionCookieValue },
+  });
+  const csrfCookie = extractCookieNamed(res, 'csrf-token');
+  const { csrfToken: token } = await res.json();
+  return { csrfCookie, csrfToken: token };
+}
+
+async function patchAs(sessionCookieValue, path, body) {
+  const { csrfCookie, csrfToken: token } = await fetchCsrfFor(sessionCookieValue);
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: [sessionCookieValue, csrfCookie].filter(Boolean).join('; '),
+      'x-csrf-token': token,
+    },
+    body: JSON.stringify(body),
+  });
+  const isJson = res.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await res.json().catch(() => null) : null;
+  return { status: res.status, data };
+}
+
 before(async () => {
-  const app = createApp();
+  app = createApp();
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://localhost:${server.address().port}`;
+  await fetchCsrfToken();
+
+  // Dedicated user for the password-reset test group.
+  const resetSetup = await registerIsolatedUser(resetEmail, resetPassword, 'Reset Test');
+  resetUserId = resetSetup.id;
+
+  // Dedicated users for the admin-feedback test group: one promoted to
+  // admin directly via SQL (there's no self-service promotion — see
+  // README.md's "Admin access" section), one left as the 'student'
+  // default to prove non-admins are rejected.
+  const adminSetup = await registerIsolatedUser(adminEmail, testUserPassword, 'Admin Test');
+  await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [adminSetup.id]);
+  adminCookie = adminSetup.cookie;
+
+  const nonAdminSetup = await registerIsolatedUser(
+    nonAdminEmail,
+    testUserPassword,
+    'Non-Admin Test'
+  );
+  nonAdminCookie = nonAdminSetup.cookie;
+
+  // /api/v1/users test group.
+  const userMgmtAdminSetup = await registerIsolatedUser(
+    userMgmtAdminEmail,
+    testUserPassword,
+    'UserMgmt Admin'
+  );
+  await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [userMgmtAdminSetup.id]);
+  userMgmtAdminId = userMgmtAdminSetup.id;
+  userMgmtAdminCookie = userMgmtAdminSetup.cookie;
+
+  const userMgmtTargetSetup = await registerIsolatedUser(
+    userMgmtTargetEmail,
+    testUserPassword,
+    'UserMgmt Target'
+  );
+  await pool.query("UPDATE users SET role = 'admin' WHERE id = ?", [userMgmtTargetSetup.id]);
+  userMgmtTargetId = userMgmtTargetSetup.id;
+
+  const deactivateSetup = await registerIsolatedUser(
+    deactivateTestEmail,
+    testUserPassword,
+    'Deactivate Test'
+  );
+  deactivateTestId = deactivateSetup.id;
+  deactivateTestCookie = deactivateSetup.cookie;
+
+  const loginBlockedSetup = await registerIsolatedUser(
+    loginBlockedEmail,
+    testUserPassword,
+    'Login Blocked Test'
+  );
+  loginBlockedId = loginBlockedSetup.id;
 });
 
 after(async () => {
   await pool.query('DELETE FROM users WHERE email = ?', [testEmail]);
+  // password_reset_tokens rows for this user are removed via ON DELETE
+  // CASCADE (see migration 003_add_password_reset_tokens.sql).
+  await pool.query('DELETE FROM users WHERE email = ?', [resetEmail]);
+  await pool.query('DELETE FROM users WHERE email = ?', [adminEmail]);
+  await pool.query('DELETE FROM users WHERE email = ?', [nonAdminEmail]);
+  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?)', [
+    userMgmtAdminEmail,
+    userMgmtTargetEmail,
+    deactivateTestEmail,
+    loginBlockedEmail,
+  ]);
   await pool.query('DELETE FROM feedback WHERE email = ?', ['test-feedback@example.com']);
+  // Stops the session store's periodic expired-session cleanup interval —
+  // without this, node --test hangs after the suite finishes because the
+  // interval keeps the event loop alive.
+  await app.locals.sessionStore.close();
   await pool.end();
   await new Promise((resolve) => server.close(resolve));
 });
@@ -53,6 +255,20 @@ test('GET /api/v1/health returns ok', async () => {
   const { status, data } = await api('/api/v1/health');
   assert.equal(status, 200);
   assert.deepEqual(data, { ok: true });
+});
+
+test('POST without a valid CSRF token is rejected', async () => {
+  const { status, data } = await api('/api/v1/auth/register', {
+    method: 'POST',
+    body: {
+      email: 'csrf-rejection-test@example.com',
+      password: testPassword,
+      displayName: 'CSRF Test',
+    },
+    omitCsrf: true,
+  });
+  assert.equal(status, 403);
+  assert.equal(data.code, 'EBADCSRFTOKEN');
 });
 
 test('GET /api/v1/progress without a session is rejected', async () => {
@@ -78,8 +294,6 @@ test('POST /api/v1/auth/register rejects a short password', async () => {
   assert.equal(status, 400);
   assert.match(data.error, /password/i);
 });
-
-let sessionCookie;
 
 test('POST /api/v1/auth/register creates an account and starts a session', async () => {
   const { status, data, cookie } = await api('/api/v1/auth/register', {
@@ -108,6 +322,52 @@ test('GET /api/v1/auth/me returns the signed-in user', async () => {
   assert.equal(data.email, testEmail);
 });
 
+test('PATCH /api/v1/auth/me updates the display name', async () => {
+  const { status, data } = await api('/api/v1/auth/me', {
+    method: 'PATCH',
+    cookie: sessionCookie,
+    body: { displayName: 'Updated Name' },
+  });
+  assert.equal(status, 200);
+  assert.equal(data.displayName, 'Updated Name');
+  assert.equal(data.email, testEmail, 'email must be unchanged — PATCH /me does not accept it');
+
+  const { data: meData } = await api('/api/v1/auth/me', { cookie: sessionCookie });
+  assert.equal(meData.displayName, 'Updated Name');
+});
+
+test('PATCH /api/v1/auth/me rejects an empty display name', async () => {
+  const { status, data } = await api('/api/v1/auth/me', {
+    method: 'PATCH',
+    cookie: sessionCookie,
+    body: { displayName: '   ' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /display name/i);
+});
+
+test('PATCH /api/v1/auth/me without a session is rejected', async () => {
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const freshCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: freshToken } = await tokenRes.json();
+
+  const res = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: freshCookie,
+      'x-csrf-token': freshToken,
+    },
+    body: JSON.stringify({ displayName: 'Nope' }),
+  });
+  assert.equal(res.status, 401);
+});
+
 test('POST /api/v1/auth/login rejects a wrong password', async () => {
   const { status, data } = await api('/api/v1/auth/login', {
     method: 'POST',
@@ -118,6 +378,11 @@ test('POST /api/v1/auth/login rejects a wrong password', async () => {
 });
 
 test('POST /api/v1/auth/login succeeds with the correct password', async () => {
+  // Refresh to a fresh anonymous session first — the shared sessionCookie
+  // is already authenticated at this point (from the register test above),
+  // so logging in again would be a no-op mutation and express-session
+  // wouldn't re-send Set-Cookie, defeating the assertion below.
+  await fetchCsrfToken();
   const { status, data, cookie } = await api('/api/v1/auth/login', {
     method: 'POST',
     body: { email: testEmail, password: testPassword },
@@ -150,6 +415,43 @@ test('POST /api/v1/progress/lesson-complete for an unknown topic is rejected', a
   assert.equal(status, 404);
 });
 
+test('POST /api/v1/progress/last-lesson records the last-visited lesson URL', async () => {
+  const { status } = await api('/api/v1/progress/last-lesson', {
+    method: 'POST',
+    cookie: sessionCookie,
+    body: { topicId: 'queues', lessonUrl: '/learn/queue' },
+  });
+  assert.equal(status, 204);
+
+  const { data } = await api('/api/v1/progress', { cookie: sessionCookie });
+  assert.equal(data.lastLessonByTopic.queues, '/learn/queue');
+});
+
+test('POST /api/v1/progress/last-lesson without a session is rejected', async () => {
+  // Needs its own fresh anonymous session + CSRF pairing rather than the
+  // shared one, which is authenticated by this point in the suite (see
+  // the equivalent quiz-result test above for the same reasoning).
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const freshCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: freshToken } = await tokenRes.json();
+
+  const res = await fetch(`${baseUrl}/api/v1/progress/last-lesson`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: freshCookie,
+      'x-csrf-token': freshToken,
+    },
+    body: JSON.stringify({ topicId: 'queues', lessonUrl: '/learn/queue' }),
+  });
+  assert.equal(res.status, 401);
+});
+
 test('POST /api/v1/progress/quiz-result records a score', async () => {
   const { status } = await api('/api/v1/progress/quiz-result', {
     method: 'POST',
@@ -173,11 +475,30 @@ test('POST /api/v1/progress/quiz-result rejects an out-of-range score', async ()
 });
 
 test('POST /api/v1/progress/quiz-result without a session is rejected', async () => {
-  const { status } = await api('/api/v1/progress/quiz-result', {
+  // Needs its own fresh anonymous session + CSRF pairing rather than the
+  // shared one above, which is authenticated by this point in the suite —
+  // sending the shared pair here would pass requireAuth and defeat the
+  // test. A brand-new pairing has no userId attached, so it still clears
+  // CSRF validation but correctly fails the auth check.
+  const tokenRes = await fetch(`${baseUrl}/api/v1/csrf-token`);
+  const freshCookie = [
+    extractCookieNamed(tokenRes, 'connect.sid'),
+    extractCookieNamed(tokenRes, 'csrf-token'),
+  ]
+    .filter(Boolean)
+    .join('; ');
+  const { csrfToken: freshToken } = await tokenRes.json();
+
+  const res = await fetch(`${baseUrl}/api/v1/progress/quiz-result`, {
     method: 'POST',
-    body: { topicId: 'arrays', score: 50 },
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: freshCookie,
+      'x-csrf-token': freshToken,
+    },
+    body: JSON.stringify({ topicId: 'arrays', score: 50 }),
   });
-  assert.equal(status, 401);
+  assert.equal(res.status, 401);
 });
 
 test('POST /api/v1/auth/logout ends the session', async () => {
@@ -189,6 +510,11 @@ test('POST /api/v1/auth/logout ends the session', async () => {
 });
 
 test('POST /api/v1/feedback accepts an anonymous submission', async () => {
+  // sessionCookie is stale after logout (destroyed server-side, so
+  // reusing it makes express-session mint a different session id than
+  // the one the shared CSRF token is bound to). Refresh to a fresh
+  // anonymous pairing first.
+  await fetchCsrfToken();
   const { status, data } = await api('/api/v1/feedback', {
     method: 'POST',
     body: {
@@ -210,4 +536,417 @@ test('POST /api/v1/feedback rejects a missing message', async () => {
   });
   assert.equal(status, 400);
   assert.match(data.error, /message/i);
+});
+
+test('POST /api/v1/auth/forgot-password responds identically for a registered and an unregistered email', async () => {
+  await fetchCsrfToken();
+  const { status, data } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'definitely-not-registered@example.com' },
+  });
+  assert.equal(status, 200);
+  assert.match(data.message, /reset link has been sent/i);
+});
+
+test('POST /api/v1/auth/forgot-password creates a reset token for a registered email', async () => {
+  const { status } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: resetEmail },
+  });
+  assert.equal(status, 200);
+
+  const [rows] = await pool.query(
+    'SELECT id FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL',
+    [resetUserId]
+  );
+  assert.ok(rows.length >= 1, 'expected a reset token row to be created');
+});
+
+test('POST /api/v1/auth/forgot-password emails the reset link for a registered email', async () => {
+  sentEmails.length = 0;
+  const { status } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: resetEmail },
+  });
+  assert.equal(status, 200);
+  assert.equal(sentEmails.length, 1);
+  assert.equal(sentEmails[0].to, resetEmail);
+  assert.match(sentEmails[0].resetUrl, /\/reset-password\?token=/);
+});
+
+test('POST /api/v1/auth/forgot-password does not attempt to send an email for an unregistered address', async () => {
+  sentEmails.length = 0;
+  const { status } = await api('/api/v1/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'definitely-not-registered-2@example.com' },
+  });
+  assert.equal(status, 200);
+  assert.equal(sentEmails.length, 0);
+});
+
+test('POST /api/v1/auth/forgot-password still returns the generic success response when the email send fails', async () => {
+  const originalSend = emailer.send;
+  emailer.send = async () => {
+    throw new Error('Simulated Resend outage');
+  };
+  try {
+    const { status, data } = await api('/api/v1/auth/forgot-password', {
+      method: 'POST',
+      body: { email: resetEmail },
+    });
+    assert.equal(status, 200);
+    assert.match(data.message, /reset link has been sent/i);
+  } finally {
+    emailer.send = originalSend;
+  }
+});
+
+test('POST /api/v1/auth/reset-password succeeds with a valid token and the new password can log in', async () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+    [resetUserId, hashResetToken(rawToken), new Date(Date.now() + 60 * 60 * 1000)]
+  );
+
+  const { status } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: rawToken, password: 'newPassword456' },
+  });
+  assert.equal(status, 204);
+
+  const { status: loginStatus, data: loginData } = await api('/api/v1/auth/login', {
+    method: 'POST',
+    body: { email: resetEmail, password: 'newPassword456' },
+  });
+  assert.equal(loginStatus, 200);
+  assert.equal(loginData.email, resetEmail);
+});
+
+test('POST /api/v1/auth/reset-password rejects an expired token', async () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+    [resetUserId, hashResetToken(rawToken), new Date(Date.now() - 60 * 1000)]
+  );
+
+  const { status, data } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: rawToken, password: 'anotherPassword789' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /invalid or has expired/i);
+});
+
+test('POST /api/v1/auth/reset-password rejects an already-used token', async () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used_at) VALUES (?, ?, ?, NOW())',
+    [resetUserId, hashResetToken(rawToken), new Date(Date.now() + 60 * 60 * 1000)]
+  );
+
+  const { status, data } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: rawToken, password: 'anotherPassword789' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /invalid or has expired/i);
+});
+
+test('POST /api/v1/auth/reset-password rejects an unknown token', async () => {
+  const { status, data } = await api('/api/v1/auth/reset-password', {
+    method: 'POST',
+    body: { token: 'not-a-real-token', password: 'anotherPassword789' },
+  });
+  assert.equal(status, 400);
+  assert.match(data.error, /invalid or has expired/i);
+});
+
+test('GET /api/v1/feedback as a signed-in non-admin is rejected with 403', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/feedback`, { headers: { Cookie: nonAdminCookie } });
+  const data = await res.json();
+  assert.equal(res.status, 403);
+  assert.match(data.error, /admin/i);
+});
+
+test('GET /api/v1/feedback without a session is rejected with 401', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/feedback`);
+  assert.equal(res.status, 401);
+});
+
+test('GET /api/v1/feedback as an admin returns the paginated list', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/feedback?page=1&limit=5`, {
+    headers: { Cookie: adminCookie },
+  });
+  const data = await res.json();
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(data.items));
+  assert.equal(data.page, 1);
+  assert.equal(data.limit, 5);
+  assert.ok(data.items.length <= 5);
+  // The anonymous-submission test earlier in this suite created at least
+  // one row, so the real total should reflect that.
+  assert.ok(data.total >= 1);
+  assert.equal(data.totalPages, Math.max(1, Math.ceil(data.total / 5)));
+});
+
+// --- /api/v1/users (admin user management) ---------------------------
+
+// isLastActiveAdmin() is unit tested directly (not through a live HTTP
+// call) because this suite runs against the real local dev database,
+// whose actual admin count is unknown and unpredictable — e.g. accounts
+// promoted during earlier manual testing in this same database are still
+// there. There's no safe way to force the *real* active-admin count to
+// exactly 1 for an integration test without temporarily touching real
+// admin accounts, which this suite deliberately never does.
+test('isLastActiveAdmin identifies the last active admin, and only that case', () => {
+  assert.equal(
+    isLastActiveAdmin({ role: 'admin', is_active: true }, 1),
+    true,
+    'the sole active admin should be identified as the last one'
+  );
+  assert.equal(
+    isLastActiveAdmin({ role: 'admin', is_active: true }, 2),
+    false,
+    'not the last one when another active admin exists'
+  );
+  assert.equal(
+    isLastActiveAdmin({ role: 'admin', is_active: false }, 1),
+    false,
+    "an already-deactivated admin doesn't count toward the total being removed"
+  );
+  assert.equal(
+    isLastActiveAdmin({ role: 'student', is_active: true }, 1),
+    false,
+    'a non-admin is never "the last admin"'
+  );
+});
+
+test('GET /api/v1/users requires admin access', async () => {
+  const anonRes = await fetch(`${baseUrl}/api/v1/users`);
+  assert.equal(anonRes.status, 401);
+
+  const nonAdminRes = await fetch(`${baseUrl}/api/v1/users`, {
+    headers: { Cookie: nonAdminCookie },
+  });
+  assert.equal(nonAdminRes.status, 403);
+});
+
+test('GET /api/v1/users returns a paginated list of accounts for an admin', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/users?page=1&limit=5`, {
+    headers: { Cookie: userMgmtAdminCookie },
+  });
+  const data = await res.json();
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(data.items));
+  assert.ok(data.items.length <= 5);
+  assert.ok(data.total >= 2, 'at least the two dedicated admin-test accounts should be counted');
+  const found = data.items.find((u) => u.id === userMgmtAdminId);
+  if (found) {
+    // Only asserted when this page happens to contain it (pagination) —
+    // confirms the response shape, not presence on every page.
+    assert.equal(found.role, 'admin');
+    assert.equal(typeof found.isActive, 'boolean');
+  }
+});
+
+test('PATCH /api/v1/users/:id/role rejects changing your own role', async () => {
+  const { status, data } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${userMgmtAdminId}/role`,
+    { role: 'student' }
+  );
+  assert.equal(status, 400);
+  assert.match(data.error, /own role/i);
+});
+
+test('PATCH /api/v1/users/:id/deactivate rejects targeting your own account', async () => {
+  const { status, data } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${userMgmtAdminId}/deactivate`,
+    {}
+  );
+  assert.equal(status, 400);
+  assert.match(data.error, /own account/i);
+});
+
+test('PATCH /api/v1/users/:id/role rejects an invalid role value', async () => {
+  const { status, data } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${userMgmtTargetId}/role`,
+    { role: 'superadmin' }
+  );
+  assert.equal(status, 400);
+  assert.match(data.error, /role must be one of/i);
+});
+
+test('PATCH /api/v1/users/:id/role demotes a non-last admin', async () => {
+  const { status } = await patchAs(userMgmtAdminCookie, `/api/v1/users/${userMgmtTargetId}/role`, {
+    role: 'student',
+  });
+  assert.equal(status, 204);
+
+  const [rows] = await pool.query('SELECT role FROM users WHERE id = ?', [userMgmtTargetId]);
+  assert.equal(rows[0].role, 'student');
+});
+
+test('deactivating a user immediately revokes their existing session, and reactivating restores it', async () => {
+  // deactivateTestCookie was captured at registration and is never
+  // refreshed below — this specifically proves the check happens fresh
+  // per request (requireAuth.js), not just at login.
+  const beforeRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: deactivateTestCookie },
+  });
+  assert.equal(beforeRes.status, 200, 'sanity check: the session works before deactivation');
+
+  const { status: deactivateStatus } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${deactivateTestId}/deactivate`,
+    {}
+  );
+  assert.equal(deactivateStatus, 204);
+
+  const afterDeactivateRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: deactivateTestCookie },
+  });
+  assert.equal(
+    afterDeactivateRes.status,
+    401,
+    'the same, still-unexpired session cookie must now be rejected'
+  );
+
+  const { status: reactivateStatus } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${deactivateTestId}/reactivate`,
+    {}
+  );
+  assert.equal(reactivateStatus, 204);
+
+  const afterReactivateRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: deactivateTestCookie },
+  });
+  assert.equal(
+    afterReactivateRes.status,
+    200,
+    'reactivating restores access on the same original session, with no re-login needed'
+  );
+});
+
+test('POST /api/v1/auth/login rejects a deactivated account with 403', async () => {
+  const { status: deactivateStatus } = await patchAs(
+    userMgmtAdminCookie,
+    `/api/v1/users/${loginBlockedId}/deactivate`,
+    {}
+  );
+  assert.equal(deactivateStatus, 204);
+
+  await fetchCsrfToken();
+  const { status, data } = await api('/api/v1/auth/login', {
+    method: 'POST',
+    body: { email: loginBlockedEmail, password: testUserPassword },
+  });
+  assert.equal(status, 403);
+  assert.match(data.error, /deactivated/i);
+});
+
+// --- /api/v1/analytics (admin platform analytics) ---------------------
+
+// Unit tested directly (not through a live HTTP call), same reasoning as
+// isLastActiveAdmin above: this suite runs against the real local dev
+// database, so how many users have touched any given topic's quiz/lessons
+// is unknown and unpredictable — there's no safe way to force a topic's
+// contributing-user count to exactly 4 vs. 5 without disturbing real data.
+test('suppressBelowMinSample hides values with too small a sample, and only those', () => {
+  assert.equal(suppressBelowMinSample(87.5, 4), null, 'below the minimum should be suppressed');
+  assert.equal(
+    suppressBelowMinSample(87.5, 5),
+    87.5,
+    'exactly the minimum should not be suppressed'
+  );
+  assert.equal(
+    suppressBelowMinSample(87.5, 10),
+    87.5,
+    'well above the minimum should not be suppressed'
+  );
+  assert.equal(suppressBelowMinSample(0, 0), null, 'zero samples must always be suppressed');
+  assert.equal(suppressBelowMinSample(50, 2, 3), null, 'a custom threshold is respected');
+});
+
+test('lastNMonths returns a gap-free, ascending run of months ending at the reference date', () => {
+  const months = lastNMonths(new Date(Date.UTC(2026, 2, 15)), 12); // March 2026
+  assert.deepEqual(months, [
+    '2025-04',
+    '2025-05',
+    '2025-06',
+    '2025-07',
+    '2025-08',
+    '2025-09',
+    '2025-10',
+    '2025-11',
+    '2025-12',
+    '2026-01',
+    '2026-02',
+    '2026-03',
+  ]);
+});
+
+test('lastNMonths handles a year boundary and a custom window size', () => {
+  const months = lastNMonths(new Date(Date.UTC(2026, 0, 1)), 3); // Jan 2026
+  assert.deepEqual(months, ['2025-11', '2025-12', '2026-01']);
+});
+
+test('GET /api/v1/analytics requires admin access', async () => {
+  const anonRes = await fetch(`${baseUrl}/api/v1/analytics`);
+  assert.equal(anonRes.status, 401);
+
+  const nonAdminRes = await fetch(`${baseUrl}/api/v1/analytics`, {
+    headers: { Cookie: nonAdminCookie },
+  });
+  assert.equal(nonAdminRes.status, 403);
+});
+
+// Asserts invariants rather than exact numbers, since the real dev database
+// this suite runs against has an unknown, unpredictable amount of prior
+// quiz/lesson activity per topic (see the comment on suppressBelowMinSample
+// above) — but every topic's suppression state must be internally
+// consistent with its own sample size regardless of what that size is.
+test('GET /api/v1/analytics returns platform-wide aggregates, with small-n topics suppressed', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/analytics`, {
+    headers: { Cookie: userMgmtAdminCookie },
+  });
+  const data = await res.json();
+  assert.equal(res.status, 200);
+
+  assert.equal(data.users.total, data.users.active + data.users.deactivated);
+  assert.ok(data.users.total >= 1);
+
+  assert.equal(data.signupTrend.length, 12);
+  data.signupTrend.forEach((m) => assert.match(m.month, /^\d{4}-\d{2}$/));
+  assert.ok(data.signupTrend.every((m) => m.count >= 0));
+
+  assert.equal(data.quizAverageByTopic.length, 12);
+  data.quizAverageByTopic.forEach((t) => {
+    if (t.avgScore === null) {
+      assert.ok(t.userCount < data.minSampleSize, `${t.topicId} suppressed but has enough users`);
+    } else {
+      assert.ok(t.userCount >= data.minSampleSize, `${t.topicId} not suppressed but too few users`);
+      assert.ok(t.avgScore >= 0 && t.avgScore <= 100);
+    }
+  });
+
+  assert.equal(data.completionByTopic.length, 12);
+  data.completionByTopic.forEach((t) => {
+    if (t.avgCompletionPct === null) {
+      assert.ok(t.usersStarted < data.minSampleSize);
+    } else {
+      assert.ok(t.usersStarted >= data.minSampleSize);
+      assert.ok(t.avgCompletionPct >= 0 && t.avgCompletionPct <= 100);
+    }
+  });
+
+  assert.ok(data.feedback.total >= 0);
+  if (data.feedback.avgRating !== null) {
+    assert.ok(data.feedback.avgRating >= 0 && data.feedback.avgRating <= 5);
+  }
+
+  assert.equal(data.minSampleSize, MIN_SAMPLE_SIZE);
 });

@@ -2,3 +2,9 @@ node_modules/
 dist/
 .env
 .env.local
+
+# Playwright (npm run test:e2e)
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/blob-report/

@@ -36,6 +36,7 @@ images/              static assets (icons, photos)
 **Current state: none exists.** There is no server process, no API server, no server-side language runtime (Node/Python/PHP/etc.), no `server.js`/`app.js`/`main.py` entry point anywhere in the repo. Pages are meant to be opened directly in a browser or served by a plain static file server (e.g., VS Code Live Server) — nothing executes server-side logic.
 
 **Implication:** every "backend-shaped" feature visible in the UI (sign-in, feedback submission, quiz result recording) is currently a client-side illusion:
+
 - Sign-in form (`sign-in.html`) posts to `action="#"` — no request is ever sent.
 - Feedback submission (in `testCode-Page/test.js`) fakes a network call with `setTimeout` and then shows a fake success message — no data leaves the browser.
 - Quiz results (`quiz.js`) are held in local JS variables during the session only; nothing is persisted or sent anywhere.
@@ -49,12 +50,14 @@ images/              static assets (icons, photos)
 **Current state: no real database.** The only persistence layer that exists is browser `localStorage`, wrapped by the `CSPlatform` module in `pages/dashboard-page/dashboard.js`. This is **not a database** — it's per-browser, per-device, client-only storage with no server backup, no multi-user support, and no query capability beyond reading the one JSON blob back out.
 
 **Current localStorage schema (as implemented in `dashboard.js`):**
+
 - Single storage key (`CSPlatform.STORAGE_KEY`) holding one JSON object as the "single source of truth" for the dashboard.
 - Public API surface exposed as `window.CSPlatform`: `markLessonComplete(...)`, `recordQuizResult(topicId, score)`, `setLastLesson(...)`, `addLearningMinutes(...)`, plus internal `getData()`/`saveData()` helpers that read/write the whole blob at once.
 - All values are zero/empty by default (a prior version seeded fake demo data; that was removed) — meaning any progress shown depends entirely on the current browser's local storage, and is lost on cache clear or on a different device/browser.
 - **Not wired up:** `quiz.js` and the learn pages do not currently call these `CSPlatform` methods, so in practice the dashboard's storage stays empty even after using the quiz/lessons — this is a known gap, not by design.
 
 **Proposed database (not built — for future reference only):** a relational schema once a backend exists, roughly:
+
 - `users` (id, email, password_hash, created_at)
 - `lessons` (id, topic_key, title)
 - `lesson_progress` (id, user_id → users, lesson_id → lessons, completed_at)
@@ -70,6 +73,7 @@ snake_case naming, foreign keys named `<table_singular>_id`, `created_at`/`updat
 **Current state: does not exist.** `pages/sign-in/sign-in.js` only handles UI panel-flipping between the "Login" and "Register" card faces (a CSS class toggle) — there is no form submit handler, no password hashing, no session, no token, no cookie, and no server to validate credentials against. Typing anything into the sign-in form and clicking submit currently does nothing (form `action="#"`).
 
 **Proposed flow (not built — for future reference only):**
+
 1. User submits email/password on `sign-in.html`.
 2. Client-side validates required fields, then POSTs to `/api/auth/login` (or `/register`).
 3. Server verifies credentials (bcrypt-compared password hash), issues a session cookie or JWT.
@@ -101,6 +105,7 @@ No authorization model (roles/permissions) currently exists in code — see User
 **Current state:** no deployment configuration exists in the repo — no CI/CD config, no `Dockerfile`, no hosting config (e.g., `vercel.json`, `netlify.toml`), no `.github/workflows/`. The project is currently run by opening HTML files directly or serving `/pages/**` via any static file server locally.
 
 **Given the current stack (pure static site), the natural deployment path is:**
+
 - Host as a static site (GitHub Pages, Netlify, or Vercel) — no server process required for the current feature set.
 - Git workflow: feature/personal branches → PR → merge into `main` (per `CLAUDE.md`'s Git Workflow section); deployment would then be triggered from `main` (e.g., auto-deploy on push, or manual publish depending on host).
 

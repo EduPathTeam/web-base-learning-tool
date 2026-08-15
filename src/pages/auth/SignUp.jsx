@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../styles/auth.css';
+import { useAuth } from '../../context/AuthContext';
+import '../../styles/auth.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,11 +49,21 @@ export default function SignUp() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+        <button type="button" className="auth-back-link" onClick={() => navigate(-1)}>
+          <i className="bi bi-arrow-left"></i> Back
+        </button>
+        <Link to="/" className="auth-logo">
+          <img src="/images/icon.png" alt="" width="28" height="28" className="auth-logo-icon" />
+          Edu<span>Path</span>
+        </Link>
         <h1 className="auth-title">Create Account</h1>
         <p className="auth-subtitle">Sign up to save your lessons, quiz scores, and progress.</p>
 
-        {error && <div className="auth-error" role="alert">{error}</div>}
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="auth-field">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import UserMenu from './UserMenu';
 
 // React port of learn-common.js's header/nav-pill/burger behavior.
 // Same markup/classes as the static site's header so array.css/learn.css
@@ -23,6 +24,7 @@ export default function Header({ navSection }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   function handleSignOut() {
     logout();
@@ -67,7 +69,10 @@ export default function Header({ navSection }) {
   return (
     <header className={`header${scrolled ? ' scrolled' : ''}`} id="header">
       <div className="header-inner">
-        <Link to="/" className="logo">Edu<span className="logo-span">Path</span></Link>
+        <Link to="/" className="logo">
+          <img src="/images/icon.png" alt="" width="30" height="30" className="logo-icon" />
+          Edu<span className="logo-span">Path</span>
+        </Link>
 
         <nav className="nav" ref={navRef} id="nav">
           <span className="active-pill" ref={activePillRef} id="activePill"></span>
@@ -88,15 +93,20 @@ export default function Header({ navSection }) {
             </Link>
           ))}
           {user ? (
-            <button type="button" className="login-icon" onClick={handleSignOut} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
-              <i className="bi bi-person-check-fill"></i> {user.displayName} · Sign Out
-            </button>
+            <UserMenu user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
           ) : (
-            <Link to="/sign-in" className="login-icon"><i className="bi bi-box-arrow-in-right"></i> Sign In</Link>
+            <Link to="/sign-in" className="login-icon">
+              <i className="bi bi-box-arrow-in-right"></i> Sign In
+            </Link>
           )}
         </nav>
 
-        <button className="burger" id="burger" aria-label="Menu" onClick={() => setMobileOpen((o) => !o)}>
+        <button
+          className="burger"
+          id="burger"
+          aria-label="Menu"
+          onClick={() => setMobileOpen((o) => !o)}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="12" x2="21" y2="12" />
@@ -108,16 +118,27 @@ export default function Header({ navSection }) {
       <nav className={`mobile-nav${mobileOpen ? ' open' : ''}`} id="mobileNav">
         <div className="mobile-nav-inner">
           {NAV_LINKS.map((item) => (
-            <Link key={item.to} to={item.to} className={`nav-link${isActive(item) ? ' active' : ''}`} onClick={() => setMobileOpen(false)}>
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`nav-link${isActive(item) ? ' active' : ''}`}
+              onClick={() => setMobileOpen(false)}
+            >
               {item.label}
             </Link>
           ))}
           {user ? (
-            <button type="button" className="login-icon" onClick={() => { setMobileOpen(false); handleSignOut(); }} style={{ border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}>
-              <i className="bi bi-person-check-fill"></i> {user.displayName} · Sign Out
-            </button>
+            <UserMenu
+              user={user}
+              isAdmin={isAdmin}
+              onSignOut={handleSignOut}
+              onItemClick={() => setMobileOpen(false)}
+              inline
+            />
           ) : (
-            <Link to="/sign-in" className="login-icon" onClick={() => setMobileOpen(false)}><i className="bi bi-box-arrow-in-right"></i> Sign In</Link>
+            <Link to="/sign-in" className="login-icon" onClick={() => setMobileOpen(false)}>
+              <i className="bi bi-box-arrow-in-right"></i> Sign In
+            </Link>
           )}
         </div>
       </nav>

@@ -16,7 +16,6 @@ export default function LessonProgressBar({ topicId, lessonUrl }) {
     setLastLesson(topicId, lessonUrl);
     const data = getData();
     setCompleted(data.completedLessons[topicId] || 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicId, lessonUrl]);
 
   if (!topic) return null;
@@ -31,7 +30,9 @@ export default function LessonProgressBar({ topicId, lessonUrl }) {
 
   return (
     <div className="lesson-progress-bar fade-in">
-      <span className="lesson-progress-badge">{completed} / {topic.total} lessons completed in {topic.name}</span>
+      <span className="lesson-progress-badge">
+        {completed} / {topic.total} lessons completed in {topic.name}
+      </span>
       <button
         className={`btn mark-complete-btn${isFullyDone ? ' is-complete' : ''}`}
         onClick={handleMarkComplete}

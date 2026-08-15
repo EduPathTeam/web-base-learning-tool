@@ -16,7 +16,8 @@
    in the box — flush against the bottom whether content is short or
    long — instead of floating above unstyled left-over body space.
    ========================================================================== */
-html, body {
+html,
+body {
   margin: 0;
 }
 
@@ -38,4 +39,101 @@ html, body {
    directly after .page-shell-main — never stretched, never overlapped. */
 .page-shell > footer {
   flex: 0 0 auto;
+}
+
+/* ==========================================================================
+   Header user menu (signed-in dropdown), used by Header.jsx via
+   UserMenu.jsx. Lives here (the one stylesheet loaded globally by
+   main.jsx) instead of the per-page stylesheets that duplicate the rest
+   of the header/nav styling, since this is new shared UI, not an
+   existing rule being touched.
+   ========================================================================== */
+.user-menu {
+  position: relative;
+}
+.user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.user-menu-caret {
+  font-size: 0.65rem;
+  transition: transform 0.2s ease;
+}
+.user-menu-caret.open {
+  transform: rotate(180deg);
+}
+
+/* Floating panel (desktop nav). position: absolute takes it out of flow
+   entirely, so it can never affect .nav's flex layout — the same class of
+   bug fixed earlier (flex-wrap pulling the trigger itself onto a second
+   row) can't recur here regardless of dropdown content width/height. */
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid var(--border-soft, #e6e9f5);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  padding: 6px;
+  z-index: 60;
+}
+
+/* Inline accordion panel (mobile drawer). The drawer animates open via
+   max-height + overflow: hidden, which would clip a floating panel — so
+   here the same dropdown renders in normal flow instead. */
+.user-menu-dropdown-inline {
+  position: static;
+  width: 100%;
+  margin-top: 8px;
+  box-shadow: none;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--dark-text, #1a1a1a);
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+.user-menu-item:hover {
+  background: var(--blue-light, #eef2ff);
+  color: var(--blue, #2e7dff);
+}
+.user-menu-item.user-menu-signout {
+  color: #e0525f;
+}
+.user-menu-item.user-menu-signout:hover {
+  background: #fdeceb;
+}
+.user-menu-divider {
+  height: 1px;
+  background: var(--border-soft, #e6e9f5);
+  margin: 4px 2px;
+}
+
+/* Header logo icon (icon.png, matching Footer.jsx's existing treatment).
+   .logo itself becomes a flex container in each page stylesheet below so
+   the icon and "EduPath" text line up. */
+.logo-icon {
+  border-radius: 8px;
+  flex-shrink: 0;
 }

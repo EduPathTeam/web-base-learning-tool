@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../styles/auth.css';
+import { useAuth } from '../../context/AuthContext';
+import '../../styles/auth.css';
 
 // Single, clean centered Sign In form (replaces the old flip-panel design)
 // wired to the real server/ API (bcrypt-hashed passwords, session cookies).
@@ -37,11 +37,21 @@ export default function SignIn() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo">Edu<span>Path</span></Link>
+        <button type="button" className="auth-back-link" onClick={() => navigate(-1)}>
+          <i className="bi bi-arrow-left"></i> Back
+        </button>
+        <Link to="/" className="auth-logo">
+          <img src="/images/icon.png" alt="" width="28" height="28" className="auth-logo-icon" />
+          Edu<span>Path</span>
+        </Link>
         <h1 className="auth-title">Sign In</h1>
         <p className="auth-subtitle">Welcome back — sign in to keep track of your progress.</p>
 
-        {error && <div className="auth-error" role="alert">{error}</div>}
+        {error && (
+          <div className="auth-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="auth-field">
