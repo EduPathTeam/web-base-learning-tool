@@ -21,7 +21,25 @@ const isProduction = process.env.NODE_ENV === 'production';
 export function createApp() {
   const app = express();
 
-  app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
+  // CORS origin validation: allow production URL and any Vercel preview URL
+  // for this project. Using a function-based check ensures only the matching
+  // origin is echoed back (not an array), and automatically supports new
+  // preview URLs without code changes (Vercel generates a new URL per deploy).
+  const productionOrigin = 'https://web-base-learning-tool.vercel.app';
+  const previewOriginPattern = /^https:\/\/web-base-learning-tool-[a-z0-9]+-edu-path\.vercel\.app$/;
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // same-origin or non-browser requests
+        if (origin === productionOrigin || previewOriginPattern.test(origin)) {
+          return callback(null, true); // allow this origin
+        }
+        return callback(new Error('Not allowed by CORS'));
+      },
+      credentials: true,
+    })
+  );
   app.use(express.json());
   // csrf-csrf reads the CSRF cookie via req.cookies, which only exists
   // once cookie-parser has run.
@@ -56,6 +74,7 @@ export function createApp() {
       cookie: {
         httpOnly: true,
         secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       },
     })
@@ -73,7 +92,7 @@ export function createApp() {
     getSessionIdentifier: (req) => req.session.id,
     cookieName: 'csrf-token',
     cookieOptions: {
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       secure: isProduction,
       httpOnly: true,
     },
