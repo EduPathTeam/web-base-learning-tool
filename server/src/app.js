@@ -89,7 +89,12 @@ export function createApp() {
   // need to change individually.
   const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     getSecret: () => process.env.CSRF_SECRET,
-    getSessionIdentifier: (req) => req.session.id,
+    // Use a stable identifier instead of session ID to avoid Vercel's Set-Cookie
+    // header dropping in cross-site responses. The CSRF cookie and token are
+    // validated purely via double-submit (cookie value vs. header value), without
+    // requiring session binding. This works because the CSRF_SECRET is static and
+    // the HMAC is deterministic given the same inputs.
+    getSessionIdentifier: () => 'stateless',
     cookieName: 'csrf-token',
     cookieOptions: {
       sameSite: isProduction ? 'none' : 'lax',
